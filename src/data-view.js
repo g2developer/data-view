@@ -1,5 +1,5 @@
-/*
- * data-view
+/**
+ * data-view (#date#)
  * create by g2
  *
  * ISC License

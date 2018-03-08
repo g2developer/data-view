@@ -7,6 +7,7 @@ var jshint = require('gulp-jshint');
 var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var header = require('gulp-header');
+var replace = require('gulp-replace');
 
 // Lint Task
 gulp.task('lint', function() {
@@ -28,13 +29,18 @@ var minFileLicense = '/**\n'
 // Concatenate & Minify JS
 gulp.task('scripts', function() {
     return gulp.src('src/data-view.js')
+        .pipe(replace('#date#', res))
+        .pipe(gulp.dest('dist'))
         .pipe(rename('data-view'+version+'.js'))
         .pipe(gulp.dest('dist'))
-        .pipe(rename('data-view'+version+'.min.js'))
+        .pipe(rename('data-view.min.js'))
         .pipe(uglify({mangle:true}))
         .pipe(header(minFileLicense))
+        .pipe(gulp.dest('dist'))
+        .pipe(rename('data-view'+version+'.min.js'))
         .pipe(gulp.dest('dist'));
 });
+
 
 // Watch Files For Changes
 //gulp.task('watch', function() {
