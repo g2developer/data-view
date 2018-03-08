@@ -16,8 +16,10 @@ gulp.task('lint', function() {
         .pipe(jshint.reporter('default'));
 });
 
-var rightNow = new Date();
-var res = rightNow.toISOString().slice(0,10).replace(/-/g,"");
+var now = new Date();
+var mm = now.getMonth() + 1;
+var dd = now.getDate();
+var res = now.getFullYear() + ((mm>9 ? '' : '0') + mm) + ((dd>9 ? '' : '0') + dd);
 var version = '.' + res;
 
 var minFileLicense = '/**\n'
