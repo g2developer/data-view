@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>dataview sample</title>
+
+		<script type="text/javascript" src="jquery-3.3.1.min.js"></script>
+		<script type="text/javascript" src="data-view.js"></script>
+
+		<script type="text/javascript" >
+
+		$(function(){
+// 			dataview.config({
+// 				attr:"dv",
+// 				listAttr:"dl",
+// 				noDataAttr:"ndv"
+// 			}).initDataView();
+		});
+
+		// global variables
+		var logined = true;
+		var nick = "닉네임";
+		var name = null;
+
+		// 전역변수 영역 load
+		function loadGlobalView(){
+			dataview.change("globalView", {});
+		}
+
+
+		// sample data object
+		var item = {
+			no: 102,
+			name : "이름",
+			datetime : '2020-03-13',
+			data_flag : "Y",
+			color : "red",
+			title : "타이틀",
+			content : "내용",
+			obj: {
+				num1: 1,
+				num2: 2,
+				num3: 3
+			},
+			sampleFunc : function(txt){
+				return ('input text is ' + txt);
+			}
+		};
+
+		// detail 영역 load
+		function loadDetailView(){
+			dataview.change("detail", item);
+		}
+
+		// form data
+		var obj = {
+			sss:"c",
+			//sss:["b","c"],
+// 			sss:"a,b,c",
+			rrr:"b",
+			//ccc:['a','10','c'],
+			ccc:'a,20,b,c',
+			coco:"#FF0000",
+			ttt:"text gogo",
+			eee:"aaa@aaa.com",
+			tata:"text area vaaa",
+			ddd:"2018-03-07",
+			mmm:"2018-11",
+			dtdt: "2018-03-07 12:12",
+			rara: "10"
+		};
+
+
+
+		// sample list data
+		var list = [
+		{name : "이름", datetime : null, data_flag : "A", color : "red", title : "타이틀11"},
+		{name : "이름1", datetime : 0, data_flag : "B", color : "blue", title : "타이틀22"},
+		{name : "이름2", datetime : "3333", data_flag : "C", color : "green", title : "타이틀33"},
+		{name : "이름3", datetime : "4444", data_flag : "D", color : "gray", title : "타이틀44"}
+		];
+
+
+		// sample list data2
+		var list2 = [
+		{name : "이름9", datetime : '2018-02-05', data_flag : "QQQ", color : "red", title : "타이틀99"},
+		{name : "이름8", datetime : '2018-02-05', data_flag : "WWW", color : "blue", title : "타이틀88"}
+		];
+
+		// sample function
+		function sampleFunction2(v1, v2, v3){
+			if(!v1 || v1 == '') return null;
+			return 'v1:'+v1+ ' ,v2:' + v2 + ', v3:'+v3;
+		}
+		</script>
+
+    </head>
+    <body >
+		<br><br><br>
+
+		<!-- 전역변수  -->
+		전역변수 등의 형식<br>
+		<button onclick="loadGlobalView()">global data load</button>
+		<button onclick="dataview.blank('globalView')">fill blank</button>
+		<button onclick="dataview.clear('globalView')">clear</button>
+		<br>
+		<div data-view="globalView">
+			닉네임 : {{ @logined ? @nick : "로그인해주세요" }} <br/>
+			이름    : {{ @name }} <br/>
+			{(@logined == true){
+				logined!!
+			}{
+				not login~
+			}}
+		</div>
+
+		<!-- 데이터가 없거나 로딩 이전 -->
+		<div no-data-view="globalView" >
+		데이터가 없거나 아직 적용 전 입니다.
+		</div>
+
+
+
+
+		<br><br><br>
+
+
+		<!-- 일반 변수 로드  -->
+		일반변수와 함수 형식<br>
+		<button onclick="loadDetailView()">normal data load</button>
+		<button onclick="dataview.blank('detail')">fill blank</button>
+		<button onclick="dataview.clear('detail')">clear</button>
+		<div data-view="detail" data-no="{{no}}">
+			1. 3항  : {{ datetime == '2020-03-13' ? datetime : 'date is not 2020-03-13'}}<br>
+			2. 전역  : {{ @nick }} login? {{ @logined }}<br>
+			4. 전역+3항 : {{@logined ? @nick : name }}<br>
+			5. 단순데이터 : datetiem: {{ datetime }} <br>
+			6. 단순데이터2 : obj.num1={{obj.num1}}, obj.num2={{obj.num2}}<br>
+			7. 함수 : {{ sampleFunction2(obj.num1, obj.num2, obj.num3) || 'data is null' }} <br>
+			8. 함수2 : {{ item.sampleFunc("$1000") }} <br>
+			9. input value : <input type="text" value="title: {{title}}" style="width:200px"><br>
+			10. textarea value : <textarea style="width:200px;height:30px"> content : {{content}} </textarea><br>
+			11. if형식  :
+			{(obj.num1 >= 0 && color == 'red'){
+				<div>{{content}}</div>
+			}{
+				<div>{{title}}</div>
+			}}<br>
+			12. 2항 : {{ @name || '이름 없음'}}<br>
+		</div>
+
+		<!-- 데이터가 없거나 로딩 이전 -->
+		<div no-data-view="detail" >
+		데이터가 없거나 아직 적용 전 입니다.
+		</div>
+
+
+		<br><br><br>
+
+		<!-- list 변수 로드  -->
+		리스트 형식<br>
+		<button onclick="dataview.change('list1', list);">list data load</button>
+		<button onclick="dataview.append('list1', list2);">list data append</button>
+		<button onclick="dataview.prepend('list1', list2);">list data prepend</button>
+		<button onclick="dataview.update('list1', 0, list2[1]);">list data update 0 index</button>
+		<button onclick="dataview.remove('list1', 0);">list data remove 0 index</button>
+		<button onclick="dataview.blank('list1')">fill blank</button>
+		<button onclick="dataview.clear('list1')">clear</button>
+		<ul id="list1">
+			<li data-list="list1" data-no="{{no}}">
+			{{ color  ==  'red' ? @nick : name}} , name:{{{name}}}, title:{{{title}}}, datetime:({{datetime}}), data_flag:[{{data_flag}}], color:{{color}}
+			{( @nick == '닉네임'){
+				<div>{{ title }}</div>
+				zzz
+			}( @nick == '닉네임1'){
+				두개다<br>
+				ㅋㅋㅋㅋ<br>
+				<span>{{@logined}}</span>
+			}{
+				없음
+			}}
+			<br>
+			{{ datetime || '없음' }}, {{datetime||111}}, {{ datetime || '없음'}}, <br>
+			</li>
+
+			<li no-data-view="list1" >
+			리스트 데이터가 없습니다. (no-data-view attribute show)
+			</li>
+		</ul>
+
+		<br><br><br>
+
+
+		form 데이터 <br>
+		<button onclick="dataview.form('formView', obj);">fill form data</button>
+		<button onclick="dataview.clearForm('formView');">clear form elements</button>
+		<button onclick="console.log(dataview.form('formView'));">get form data (see console)</button>
+
+		<!-- form data fill -->
+		<div data-view="formView">
+			<select name="sss" >
+			<option value="a" >a</option>
+			<option value="b" >b</option>
+			<option value="c" >c</option>
+			</select>
+			<br>
+			<input type="radio" name="rrr" value="a">a
+			<input type="radio" name="rrr" value="b">b
+			<input type="radio" name="rrr" value="c">c
+			<input type="radio" name="rrr" value="b">b <br>
+			<input type="checkbox" name="ccc" value="a">
+			<input type="checkbox" name="ccc" value="b">
+			<input type="checkbox" name="ccc" value="c">
+			<input type="checkbox" name="ccc" value="d"> <br>
+			<input type="color" name="coco" ><br>
+			<input type="text" name="ttt" ><br>
+			<input type="email" name="eee" ><br>
+			<input type="date" name="ddd" ><br>
+			<input type="month" name="mmm" ><br>
+			<input type="datetime" name="dtdt" ><br>
+			<input type="range" name="rara" ><br>
+			<input type="hidden" name="hhh" ><br>
+			<textarea name="tata" ></textarea><br>
+		</div>
+
+
+
+		<br><br><br>
+
+		end
+	</body>
+</html>
