@@ -30,7 +30,7 @@ var ATTR_NO_DATA_VIEW = "no-data-view";
  * @param params.listAttr - data-list tag attribute name default "data-list"
  * @param params.noDataAttr - no-data-view tag attribute name default "no-data-view"
  * @param params.createGlobalItems - dataview item들을 전역변수로 생성할 것인지 default true
- * @param params.refenceData - dataview의 item.data가 change할 때 제공된 데이터를 참조할지
+ * @param params.referenceData - dataview의 item.data가 change할 때 제공된 데이터를 참조할지
  */
 function DataView(params){
 
@@ -44,6 +44,8 @@ function DataView(params){
 	this.changing = false;
 	// dataview item들을 전역변수로 생성할 것인지
 	this.createGlobalItems = true;
+	// change한 데이터를 dataview data로 참조할 것인지
+	this.referenceData = false;
 
 
 	this.config(params);
@@ -56,7 +58,7 @@ function DataView(params){
  * @param params.listAttr - data-list tag attribute name default "data-list"
  * @param params.noDataAttr - no-data-view tag attribute name default "no-data-view"
  * @param params.createGlobalItems - dataview item들을 전역변수로 생성할 것인지 default true
- * @param params.refenceData - dataview의 item.data가 change할 때 제공된 데이터를 참조할지
+ * @param params.referenceData - dataview의 item.data가 change할 때 제공된 데이터를 참조할지
  */
 DataView.prototype.config = function(params){
 	if(!params) return this;
@@ -68,7 +70,7 @@ DataView.prototype.config = function(params){
 
 	// dataview item들을 전역변수로 생성할 것인지
 	this.createGlobalItems = (params.hasOwnProperty("createGlobalItems") ? params.createGlobalItems : true);
-	this.refenceData = (params.hasOwnProperty("refenceData") ? params.refenceData : false);
+	this.referenceData = (params.hasOwnProperty("referenceData") ? params.referenceData : false);
 
 	return this;
 };
@@ -568,7 +570,7 @@ DataView.prototype.change = function(dataViewId, data){
 	var el = this.getDataViewElement(item);
 	var html = "";
 
-	if(!this.refenceData){
+	if(!this.referenceData){
 		data = clone(data);
 	}
 
@@ -576,7 +578,7 @@ DataView.prototype.change = function(dataViewId, data){
 		if(data){
 			item.data = Array.isArray(data) ? data : [data];
 		}else{
-			if(this.refenceData){
+			if(this.referenceData){
 				for(var i = item.data.length - 1; i >= 0; i--){
 					item.data.pop();
 				}
@@ -623,7 +625,7 @@ DataView.prototype.append = function(dataViewId, data){
 	var el = this.getDataViewElement(item);
 
 	if(!item.data){
-		item.data = this.refenceData ? data : clone(data);
+		item.data = this.referenceData ? data : clone(data);
 	}else{
 		if(Array.isArray(item.data)){
 			if(Array.isArray(data)){
@@ -678,7 +680,7 @@ DataView.prototype.prepend = function(dataViewId, data){
 	var el = this.getDataViewElement(item);
 
 	if(!item.data){
-		item.data = this.refenceData ? data : clone(data);
+		item.data = this.referenceData ? data : clone(data);
 	}else{
 		if(Array.isArray(item.data)){
 			if(Array.isArray(data)){
