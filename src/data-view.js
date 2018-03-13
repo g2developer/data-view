@@ -416,13 +416,13 @@ DataView.prototype.mergeGlobal = function(html){
  * @return string - data가 적용된 html
  */
 DataView.prototype.mergeIfStateHtmlData = function(html, data){
-	var rg = /\{( *\(.+\) *\{\s*([^\}]*\s*)*\}\s*)+(.*\{\s*([^\}]*\s*)*\}\s*)*\}/g;
+	var rg = /\{\s*(\s*\(.+\)\s*\{\s*([^\}]*\s*)*\}\s*)+(.*\{\s*([^\}]*\s*)*\}\s*)*\}/g;
 	while(rg.test(html)){
 		var match = html.match(rg);
 		var tmp = match[0];
 		var srcArr = tmp.match(/\{\s*[^\{\}]+\s*\}/g);
 
-		var logicRg = /\{ *\([^\(\)]*\)/g;
+		var logicRg = /\{\s*\([^\(\)]*\)\s*\{|\}\s*\([^\(\)]*\)\s*\{/g;
 		var logicMatch = tmp.match(logicRg);
 
 		var result = '';
@@ -430,7 +430,7 @@ DataView.prototype.mergeIfStateHtmlData = function(html, data){
 		// if문 중에서 true 인것을 골라 소스를 찾는다.
 		for(var i = 0; i < logicMatch.length; i++){
 
-			var logic = logicMatch[i].replace(/\{/, '');
+			var logic = logicMatch[i].replace(/\{|\}/g, '');
 			var t = this.mergeData(logic, data);
 			if(t){
 				result = srcArr[i];
