@@ -35,18 +35,17 @@ var ATTR_NO_DATA_VIEW = "no-data-view";
 function DataView(params){
 
 	// dataViewItem array
-	this.dataViewItems = [];
+	this.items = [];
 	// 초기화 중 인지 아닌지
-	this.initializing = false;
+	this._initializing = false;
+	// dataview 적용/변경 중인지
+	this._changing = false;
 	// 초기화가 완료되었는지
 	this.initialized = false;
-	// dataview 적용/변경 중인지
-	this.changing = false;
 	// dataview item들을 전역변수로 생성할 것인지
 	this.createGlobalItems = true;
 	// change한 데이터를 dataview data로 참조할 것인지
 	this.referenceData = false;
-
 
 	this.config(params);
 }
@@ -82,12 +81,12 @@ DataView.prototype.config = function(params){
  * @param element - dataview를 검색할 element 혹은 css selector
  */
 DataView.prototype.initDataView = function(element){
-	this.initializing = true;
+	this._initializing = true;
 
 	// 기존 항목 모두 삭제
-	for(var i = this.dataViewItems.length - 1; i >= 0; i--){
-		if(this.dataViewItems[i].scope == element){
-			this.dataViewItems.pop();
+	for(var i = this.items.length - 1; i >= 0; i--){
+		if(this.items[i].scope == element){
+			this.items.pop();
 		}
 	}
 
@@ -100,7 +99,7 @@ DataView.prototype.initDataView = function(element){
 			this.change(newArr[i].id, []);	//clear
 		}
 	}
-	this.initializing = false;
+	this._initializing = false;
 	this.initialized = true;
 
 };
@@ -166,24 +165,33 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 		});
 		newArr.push(dvItem);
 
+		if(!this[dvId]){
+			this[dvId] = dvItem;
+		}
+		
 		if(this.createGlobalItems){
-			// global변수로 생성
-			try{
-				// global 변수가 있는지 검사(에러시 없음)
-				var v = eval(dvId);
-
-				// 존재한다면..
-				for(var k in dvItem){
-					v[k] = vtemp[k];
+			
+			// 같은 이름의 기존 변수가 존재한면..
+			if(window[dvId]){
+				
+				console.warn('DataViewItem name \''+dvId+'\' is already exist');
+				
+				var v = window[dvId];
+				if(typeof(v) === 'object' && !Array.isArray(v)){
+					for(var k in dvItem){
+						if(!v[k]){
+							v[k] = dvItem[k];
+						}
+					}
 				}
-
-			}catch(e){
+			} else {
 				eval(dvId + "=dvItem;");
 			}
+			
 		}
 	}
 	if(newArr.length > 0){
-		this.dataViewItems = this.dataViewItems.concat(newArr);
+		this.items = this.items.concat(newArr);
 	}
 	return newArr;
 };
@@ -212,9 +220,9 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 		return;
 	}
 	var item = null;
-	for(var i = 0; i < this.dataViewItems.length; i++){
-		if(this.dataViewItems[i].id == dataViewId){
-			item = this.dataViewItems[i];
+	for(var i = 0; i < this.items.length; i++){
+		if(this.items[i].id == dataViewId){
+			item = this.items[i];
 			break;
 		}
 	}
@@ -223,6 +231,16 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 		return;
 	}
 	return item;
+};
+
+
+/**
+ * dataViewId로 저장되있는 dataview item을 리턴
+ * @param dataViewId - dataview id 
+ * @return object - dataview object item
+ */
+DataView.prototype.get = function(dataViewId){
+	return this.getDataViewItem(dataViewId);
 };
 
 
@@ -592,7 +610,7 @@ DataView.prototype.change = function(dataViewId, data){
 		html = this.getDataViewHtml(dataViewId, data);
 	}
 
-	this.changing = true;
+	this._changing = true;
 
 	// element가 둘 이상인 경우 html을 변경할 마지막 하나만 남기고 모두 지움
 	if(el.length > 1){
@@ -611,7 +629,7 @@ DataView.prototype.change = function(dataViewId, data){
 
 	item.element = this.getDataViewElement(item);
 	this.showNoDataView(item);
-	this.changing = false;
+	this._changing = false;
 };
 
 /**
@@ -654,7 +672,7 @@ DataView.prototype.append = function(dataViewId, data){
 		html = this.getDataViewHtml(dataViewId, data);
 	}
 
-	this.changing = true;
+	this._changing = true;
 	el.last().after(html);
 
 	// 첫번째가 템플릿이면 삭제
@@ -665,7 +683,7 @@ DataView.prototype.append = function(dataViewId, data){
 
 	item.element = this.getDataViewElement(item);
 	this.showNoDataView(item);
-	this.changing = false;
+	this._changing = false;
 };
 
 
@@ -710,7 +728,7 @@ DataView.prototype.prepend = function(dataViewId, data){
 		html = this.getDataViewHtml(dataViewId, data);
 	}
 
-	this.changing = true;
+	this._changing = true;
 	el.first().before(html);
 
 	// 마지막이 템플릿이면 삭제
@@ -721,7 +739,7 @@ DataView.prototype.prepend = function(dataViewId, data){
 
 	item.element = this.getDataViewElement(item);
 	this.showNoDataView(item);
-	this.changing = false;
+	this._changing = false;
 };
 
 
@@ -740,10 +758,10 @@ DataView.prototype.update = function(dataViewId, idx, data){
 	item.data[idx] = data;
 	var html = this.getDataViewHtml(dataViewId, data);
 
-	this.changing = true;
+	this._changing = true;
 	el.replaceWith(html);
 	item.element = this.getDataViewElement(item);
-	this.changing = false;
+	this._changing = false;
 };
 
 
@@ -761,7 +779,7 @@ DataView.prototype.remove = function(dataViewId, idx){
 
 	item.data.splice(idx,1);
 
-	this.changing = true;
+	this._changing = true;
 	if(this.getDataViewElement(item).length > 1){
 		el.remove();
 	}else{
@@ -770,7 +788,7 @@ DataView.prototype.remove = function(dataViewId, idx){
 	}
 	item.element = this.getDataViewElement(item);
 	this.showNoDataView(item);
-	this.changing = false;
+	this._changing = false;
 };
 
 
@@ -812,7 +830,7 @@ DataView.prototype.loadAnd = function(url, querySelector, isOverride){
 	jQuery.get(url, function(html){
 		html = dataview.newDataViewHtml(html);
 		if(querySelector){
-			this.changing = true;
+			this._changing = true;
 			var el = jQuery(querySelector);
 			if(isOverride){
 				var p = el.parent();
@@ -824,7 +842,7 @@ DataView.prototype.loadAnd = function(url, querySelector, isOverride){
 			}
 			var targetList = this.findDataViewList(el);
 			dataview.refindParent(targetList);
-			this.changing = false;
+			this._changing = false;
 		}
 	});
 };
@@ -876,10 +894,10 @@ DataView.prototype.refindParent = function(targetList){
 		var dvId = this.getDataViewId(targetList[i]);
 		if(!dvId) continue;
 
-		for(var j = 0; j < this.dataViewItems.length; j++){
+		for(var j = 0; j < this.items.length; j++){
 			// 존재하면 부모를 바꿈
-			if(this.dataViewItems[j].id == dvId){
-				this.dataViewItems[j].parent = jQuery(targetList[i]).parent();
+			if(this.items[j].id == dvId){
+				this.items[j].parent = jQuery(targetList[i]).parent();
 			}
 		}
 	}
@@ -1208,7 +1226,7 @@ document.addEventListener("DOMNodeInserted", _dvinit, false);
 
 function _dvinit(e){
 
-	if(document.body && !dataview.initializing && !dataview.initialized){
+	if(document.body && !dataview._initializing && !dataview.initialized){
 
 		var dataviewSrc = document.querySelector("script[src*='data-view']").getAttribute("src");
 
