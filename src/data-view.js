@@ -1071,6 +1071,9 @@ function DataViewItem(params){
  * @param data - 변경할 데이터
  */
 DataViewItem.prototype.change = function(data){
+	if( data === undefined ){
+		data = {};
+	}
 	dataview.change(this.id, data);
 };
 
