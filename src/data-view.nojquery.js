@@ -157,7 +157,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 			type : dvType,
 			selector : selector,
 			template : targetList[i].outerHTML,
-			element : targetList[i],
+			elements : targetList[i],
 			parent : targetList[i].parentNode,
 			noDataView : noDvElement,
 			noDataViewHTML : noDvElementHTML,
@@ -188,6 +188,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 				eval(dvId + "=dvItem;");
 			}
 
+      this[dvId] = dvItem;
 		}
 	}
 	if(newArr.length > 0){
@@ -223,8 +224,8 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 	for(var i = 0; i < this.items.length; i++){
 		if(this.items[i].id == dataViewId){
 			item = this.items[i];
-      item.element = this.getDataViewElement(item);
-      item.parent = item.element[0].parentNode;
+      item.elements = this.getDataViewElements(item);
+      item.parent = item.elements[0].parentNode;
 
   		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
   		var noDvElementHTML = noDvElement[0] ? noDvElement[0].outerHTML : "";
@@ -263,11 +264,11 @@ DataView.prototype.getDataViewSelector = function(dataViewId){
 
 
 /**
- * dataview의 화면 내 실제 element를 리턴한다.
+ * dataview의 화면 내 실제 elements를 리턴한다.
  * @param item - dataview item
- * @return jquery element - 화면에 적용되어있는 실제 dataview element
+ * @return NodeList - 화면에 적용되어있는 실제 dataview element
  */
-DataView.prototype.getDataViewElement = function(item){
+DataView.prototype.getDataViewElements = function(item){
 	var e = el(item.selector, item.parent);
 	if(!e || e.length == 0) {
 		e = el(item.selector);
@@ -564,23 +565,28 @@ DataView.prototype.getNotLiteralArr = function(txt){
  * @param item - dataview item
  */
 DataView.prototype.showNoDataView = function(item){
-	var noDvElement = jQuery("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
+	var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
 
-	// 데이터 없는 경우 no-data-view 출력
+  if(!noDvElement || noDvElement.length == 0)
+    return;
+
+  noDvElement = noDvElement[0];
+
+  // 데이터 없는 경우 no-data-view 출력
 	if(!item.data || item.data.length == 0){
 
-		if(noDvElement.html()){
-			noDvElement.show();
+		if(noDvElement.outerHTML){
+			noDvElement.style.display = "block";
 		}else{
 			if(item.noDataViewHTML){
 				if(item.parent && item.parent.length > 0){
-					jQuery(item.noDataViewHTML).appendTo(item.parent);
+          item.parent.appendChilde(this._createElements(item.noDataViewHTML));
 				}
 			}
 		}
 
 	} else {
-		if(noDvElement) noDvElement.hide();
+		if(noDvElement) noDvElement.style.display = "none";
 	}
 };
 
@@ -593,7 +599,7 @@ DataView.prototype.showNoDataView = function(item){
 DataView.prototype.change = function(dataViewId, data){
 	//if(!data) return;
 	var item = this.getDataViewItem(dataViewId);
-	var ele = item.element;
+	var ele = item.elements;
 	var html = "";
 
 	if(!this.referenceData){
@@ -636,7 +642,7 @@ DataView.prototype.change = function(dataViewId, data){
 	}
 
 
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
 	this._changing = false;
 };
@@ -649,7 +655,7 @@ DataView.prototype.change = function(dataViewId, data){
 DataView.prototype.append = function(dataViewId, data){
 	if(!data) return;
 	var item = this.getDataViewItem(dataViewId);
-	var ele = item.element;
+	var ele = item.elements;
 
 	if(!item.data){
 		item.data = this.referenceData ? data : clone(data);
@@ -692,7 +698,7 @@ DataView.prototype.append = function(dataViewId, data){
 		tmplt.outerHTML = "";
 	}
 
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
 	this._changing = false;
 };
@@ -706,7 +712,7 @@ DataView.prototype.append = function(dataViewId, data){
 DataView.prototype.prepend = function(dataViewId, data){
 	if(!data) return;
 	var item = this.getDataViewItem(dataViewId);
-	var ele = item.element;
+	var ele = item.elements;
 
 	if(!item.data){
 		item.data = this.referenceData ? data : clone(data);
@@ -751,7 +757,7 @@ DataView.prototype.prepend = function(dataViewId, data){
 		tmplt.outerHTML = "";
 	}
 
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
 	this._changing = false;
 };
@@ -766,7 +772,7 @@ DataView.prototype.prepend = function(dataViewId, data){
 DataView.prototype.update = function(dataViewId, idx, data){
 	var item = this.getDataViewItem(dataViewId);
 	if(!item.data || item.data.length < idx) return;
-	var ele = this.getDataViewElement(item)[idx];
+	var ele = this.getDataViewElements(item)[idx];
 	if(ele.style.display == "none") return;
 
 	item.data[idx] = data;
@@ -774,7 +780,7 @@ DataView.prototype.update = function(dataViewId, idx, data){
 
 	this._changing = true;
 	ele.outerHTML = html;
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this._changing = false;
 };
 
@@ -788,19 +794,19 @@ DataView.prototype.remove = function(dataViewId, idx){
 	var item = this.getDataViewItem(dataViewId);
 	if(!item.data || item.data.length < idx) return;
 
-	var ele = item.element[idx];
+	var ele = item.elements[idx];
 	if(ele.style.display == "none") return;
 
 	item.data.splice(idx,1);
 
 	this._changing = true;
-	if(this.getDataViewElement(item).length > 1){
+	if(this.getDataViewElements(item).length > 1){
 		ele.outerHTML = "";
 	}else{
 		ele.style.display = "none";
 		ele.innerHTML = "";
 	}
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
 	this._changing = false;
 };
@@ -1190,8 +1196,8 @@ DataViewItem.prototype.blank = function(){
  * dataview를 화면에 보인다
  */
 DataViewItem.prototype.show = function(){
-	for(var i = 0; i < this.element.length; i++){
-    this.element[i].style.display = this._preStyleDisplay || "block";
+	for(var i = 0; i < this.elements.length; i++){
+    this.elements[i].style.display = this._preStyleDisplay || "block";
   }
 };
 
@@ -1199,9 +1205,9 @@ DataViewItem.prototype.show = function(){
  * dataview를 화면에서 가린다.
  */
 DataViewItem.prototype.hide = function(){
-	for(var i = 0; i < this.element.length; i++){
-    this._preStyleDisplay = this.element[i].style.display;
-    this.element[i].style.display = "none";
+	for(var i = 0; i < this.elements.length; i++){
+    this._preStyleDisplay = this.elements[i].style.display;
+    this.elements[i].style.display = "none";
   }
 };
 
