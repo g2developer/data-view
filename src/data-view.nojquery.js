@@ -176,14 +176,14 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 
 				console.warn('DataViewItem name \''+dvId+'\' is already exist');
 
-				var v = window[dvId];
+				/*var v = window[dvId];
 				if(typeof(v) === 'object' && !Array.isArray(v)){
 					for(var k in dvItem){
 						if(!v[k]){
 							v[k] = dvItem[k];
 						}
 					}
-				}
+				}*/
 			} else {
 				eval(dvId + "=dvItem;");
 			}
@@ -223,10 +223,10 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 	for(var i = 0; i < this.items.length; i++){
 		if(this.items[i].id == dataViewId){
 			item = this.items[i];
-      item.element = this.getDataViewElement(dvItem);
+      item.element = this.getDataViewElement(item);
       item.parent = item.element[0].parentNode;
 
-  		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+dvId+"]");
+  		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
   		var noDvElementHTML = noDvElement[0] ? noDvElement[0].outerHTML : "";
 			item.noDataView = noDvElement;
 			item.noDataViewHTML = noDvElementHTML;
@@ -683,11 +683,12 @@ DataView.prototype.append = function(dataViewId, data){
 
 	this._changing = true;
   var node = ele[ele.length-1];
-  node.parentNode.insertBefore(html, node.nextSibling);
+  var newNodes = this._createElements(html);
+  node.parentNode.insertBefore(newNodes, node.nextSibling);
 
 	// 첫번째가 템플릿이면 삭제
 	var tmplt = ele[0];
-	if(tmplt.style.display != "none"){
+	if(tmplt.style.display == "none"){
 		tmplt.outerHTML = "";
 	}
 
@@ -740,12 +741,13 @@ DataView.prototype.prepend = function(dataViewId, data){
 
 	this._changing = true;
 
-  var node = ele[ele.length-1];
-  node.parentNode.insertBefore(html, node);
+  var node = ele[0];
+  var newNode = this._createElements(html);
+  node.parentNode.insertBefore(newNode, node);
 
 	// 마지막이 템플릿이면 삭제
 	var tmplt = ele[ele.length-1];
-	if(tmplt.style.display != "none"){
+	if(tmplt.style.display == "none"){
 		tmplt.outerHTML = "";
 	}
 
@@ -1075,6 +1077,30 @@ DataView.prototype.form = function(dataViewId, data){
 
 
 /**
+ * singleton DOMParser를 리턴
+ * @return 브라우저에서 생성된 DOMParser
+ */
+DataView.prototype._getDOMParser = function(){
+  if(!this._domParser){
+    this._domParser = new DOMParser();
+  }
+  return this._domParser;
+};
+
+/**
+ * String 타입의 html을 Node로 변경하여 리턴
+ * @param markup html markup
+ * @return NodeList
+ */
+DataView.prototype._createElements = function(markup){
+  /*console.log(markup);
+  var newNodes = this._getDOMParser().parseFromString(markup, "text/html").body.childNodes;
+  console.log(newNodes, newNodes.length);
+  return newNodes;*/
+  return document.createRange().createContextualFragment(markup);
+};
+
+/**
  * constructor DataView Item
  * @param params - dataview item parameters
  */
@@ -1160,6 +1186,24 @@ DataViewItem.prototype.blank = function(){
 	dataview.blank(this.id);
 };
 
+/**
+ * dataview를 화면에 보인다
+ */
+DataViewItem.prototype.show = function(){
+	for(var i = 0; i < this.element.length; i++){
+    this.element[i].style.display = this._preStyleDisplay || "block";
+  }
+};
+
+/**
+ * dataview를 화면에서 가린다.
+ */
+DataViewItem.prototype.hide = function(){
+	for(var i = 0; i < this.element.length; i++){
+    this._preStyleDisplay = this.element[i].style.display;
+    this.element[i].style.display = "none";
+  }
+};
 
 /**
  * dataview 안에 있는 form element에 데이터를 채운다.
