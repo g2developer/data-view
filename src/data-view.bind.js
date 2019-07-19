@@ -46,8 +46,8 @@ function DataView(params){
 	this.createGlobalItems = true;
 	// change한 데이터를 dataview data로 참조할 것인지
 	this.referenceData = false;
-  // binding으로 등록된 key 배열
-  this.registedBindKeyMaps = [];
+	// binding으로 등록된 key 배열
+	this.registedBindKeyMaps = [];
 
 	this.config(params);
 }
@@ -147,7 +147,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 			selector = "["+ATTR_DATA_VIEW+"="+dvId+"]";
 		}else if(targetList[i].getAttribute(ATTR_DATA_LIST)){
 			selector = "["+ATTR_DATA_LIST+"="+dvId+"]";
-		}else  if(targetList[i].getAttribute("id")){
+		}else if(targetList[i].getAttribute("id")){
 			selector = "#"+dvId;
 		}
 
@@ -190,7 +190,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 				eval(dvId + "=dvItem;");
 			}
 
-      this[dvId] = dvItem;
+			this[dvId] = dvItem;
 		}
 	}
 	if(newArr.length > 0){
@@ -226,11 +226,11 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 	for(var i = 0; i < this.items.length; i++){
 		if(this.items[i].id == dataViewId){
 			item = this.items[i];
-      item.elements = this.getDataViewElements(item);
-      item.parent = item.elements[0].parentNode;
+			item.elements = this.getDataViewElements(item);
+			item.parent = item.elements[0].parentNode;
 
-  		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
-  		var noDvElementHTML = noDvElement[0] ? noDvElement[0].outerHTML : "";
+		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
+		var noDvElementHTML = noDvElement[0] ? noDvElement[0].outerHTML : "";
 			item.noDataView = noDvElement;
 			item.noDataViewHTML = noDvElementHTML;
 
@@ -346,7 +346,7 @@ DataView.prototype.mergeData = function (tmp, data){
 	var o = tmp;
 
 	// escape문자 변경
-    tmp = escapeToNormalChar(tmp);
+	tmp = escapeToNormalChar(tmp);
 	// 전역변수 변경
 	tmp = this.mergeGlobal(tmp);
 	// 일반변수 변경
@@ -569,12 +569,12 @@ DataView.prototype.getNotLiteralArr = function(txt){
 DataView.prototype.showNoDataView = function(item){
 	var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
 
-  if(!noDvElement || noDvElement.length == 0)
-    return;
+	if(!noDvElement || noDvElement.length == 0)
+		return;
 
-  noDvElement = noDvElement[0];
+	noDvElement = noDvElement[0];
 
-  // 데이터 없는 경우 no-data-view 출력
+	// 데이터 없는 경우 no-data-view 출력
 	if(!item.data || item.data.length == 0){
 
 		if(noDvElement.outerHTML){
@@ -582,7 +582,7 @@ DataView.prototype.showNoDataView = function(item){
 		}else{
 			if(item.noDataViewHTML){
 				if(item.parent && item.parent.length > 0){
-          item.parent.appendChilde(this._createElements(item.noDataViewHTML));
+					item.parent.appendChilde(this._createElements(item.noDataViewHTML));
 				}
 			}
 		}
@@ -690,9 +690,9 @@ DataView.prototype.append = function(dataViewId, data){
 	}
 
 	this._changing = true;
-  var node = ele[ele.length-1];
-  var newNodes = this._createElements(html);
-  node.parentNode.insertBefore(newNodes, node.nextSibling);
+	var node = ele[ele.length-1];
+	var newNodes = this._createElements(html);
+	node.parentNode.insertBefore(newNodes, node.nextSibling);
 
 	// 첫번째가 템플릿이면 삭제
 	var tmplt = ele[0];
@@ -749,9 +749,9 @@ DataView.prototype.prepend = function(dataViewId, data){
 
 	this._changing = true;
 
-  var node = ele[0];
-  var newNode = this._createElements(html);
-  node.parentNode.insertBefore(newNode, node);
+	var node = ele[0];
+	var newNode = this._createElements(html);
+	node.parentNode.insertBefore(newNode, node);
 
 	// 마지막이 템플릿이면 삭제
 	var tmplt = ele[ele.length-1];
@@ -1089,10 +1089,10 @@ DataView.prototype.form = function(dataViewId, data){
  * @return 브라우저에서 생성된 DOMParser
  */
 DataView.prototype._getDOMParser = function(){
-  if(!this._domParser){
-    this._domParser = new DOMParser();
-  }
-  return this._domParser;
+	if(!this._domParser){
+		this._domParser = new DOMParser();
+	}
+	return this._domParser;
 };
 
 /**
@@ -1101,11 +1101,11 @@ DataView.prototype._getDOMParser = function(){
  * @return NodeList
  */
 DataView.prototype._createElements = function(markup){
-  /*console.log(markup);
-  var newNodes = this._getDOMParser().parseFromString(markup, "text/html").body.childNodes;
-  console.log(newNodes, newNodes.length);
-  return newNodes;*/
-  return document.createRange().createContextualFragment(markup);
+	/*console.log(markup);
+	var newNodes = this._getDOMParser().parseFromString(markup, "text/html").body.childNodes;
+	console.log(newNodes, newNodes.length);
+	return newNodes;*/
+	return document.createRange().createContextualFragment(markup);
 };
 
 
@@ -1117,90 +1117,90 @@ DataView.prototype._createElements = function(markup){
  */
 DataView.prototype.searchAndBind = function(obj, bindArr){
 
-  console.log("searchObj", obj, bindArr);
+	console.log("searchObj", obj, bindArr);
 
-  var k = null;
-  for(var i = 0; i < bindArr.length; i++){
-    k = bindArr[i];
+	var k = null;
+	for(var i = 0; i < bindArr.length; i++){
+		k = bindArr[i];
 
-    var kArr = k.split(".");
-    var tmp = obj;
+		var kArr = k.split(".");
+		var tmp = obj;
 
-    for(var j = 0; j < kArr.length; j++){
+		for(var j = 0; j < kArr.length; j++){
 
-      this.createSetAndGet(tmp, kArr[j]);
+			this.createSetAndGet(tmp, kArr[j]);
 
-      // 마지막이 아니고 세팅하려는 객체가 없으면
-      if(j != kArr.length-1 && !tmp[kArr[j]]){
-        tmp["_" + kArr[j]] = {};
-      }
+			// 마지막이 아니고 세팅하려는 객체가 없으면
+			if(j != kArr.length-1 && !tmp[kArr[j]]){
+				tmp["_" + kArr[j]] = {};
+			}
 
-      var p = tmp;
-      tmp = tmp[kArr[j]];
-      if(tmp && typeof(tmp) == "object"){
-        tmp.__p__ = p;  // object parent
-        tmp.__n__ = kArr[j];
-      }
-    }
-  }
+			var p = tmp;
+			tmp = tmp[kArr[j]];
+			if(tmp && typeof(tmp) == "object"){
+				tmp.__p__ = p;	// object parent
+				tmp.__n__ = kArr[j];
+			}
+		}
+	}
 };
 
 /**
- * create setter and getter
- * @param obj create target
- * @param prop setter and getter key
- */
+* create setter and getter
+* @param obj create target
+* @param prop setter and getter key
+*/
 DataView.prototype.createSetAndGet = function(obj, prop){
 
-  if(Object.getOwnPropertyDescriptor(obj, prop) &&
-      Object.getOwnPropertyDescriptor(obj, prop).set ) {
-    return;
-  }
+	if(Object.getOwnPropertyDescriptor(obj, prop) &&
+		Object.getOwnPropertyDescriptor(obj, prop).set ) {
+		return;
+	}
 
-  console.log("[[[[ bind to ",obj," ]]]", prop);
+	console.log("[[[[ bind to ",obj," ]]]", prop);
 
-  if(!obj){
-    obj = {};
-  }
+	if(!obj){
+		obj = {};
+	}
 
-  obj["_"+prop] = obj[prop] || null;
+	obj["_"+prop] = obj[prop] || null;
 
-  obj.__c__ = obj.__c__ || [];  // binding childen keys
-  if(obj.__c__.indexOf(prop) == -1 ){
-    obj.__c__.push(prop);
-  }
+	obj.__c__ = obj.__c__ || [];	// binding childen keys
+	if(obj.__c__.indexOf(prop) == -1 ){
+		obj.__c__.push(prop);
+	}
 
-  Object.defineProperty(obj, prop, {
+	Object.defineProperty(obj, prop, {
 
-    set : function(d){
-      console.log('set ' + prop , d);
+		set : function(d){
+			console.log('set ' + prop , d);
 
-      var childKeyArr = null;
-      var parent = null;
-      var bindKey = null;
-      var bindChildArr = null;
-      if(obj["_"+prop] && typeof(obj["_"+prop]) == "object"){
-        childKeyArr = obj["_"+prop].__c__;
-        parent = obj["_"+prop].__p__;
-        bindKey = this.getBindKeyFromBindedObj(obj["_" + prop]);
-        bindChildArr = this.findSubBindkeyArr(bindKey);
-      }
+			var childKeyArr = null;
+			var parent = null;
+			var bindKey = null;
+			var bindChildArr = null;
+			if(obj["_"+prop] && typeof(obj["_"+prop]) == "object"){
+				childKeyArr = obj["_"+prop].__c__;
+				parent = obj["_"+prop].__p__;
+				bindKey = this.getBindKeyFromBindedObj(obj["_" + prop]);
+				bindChildArr = this.findSubBindkeyArr(bindKey);
+			}
 
-      obj["_"+prop] = d;
-      // TODO 이벤트 발생시키기
+			obj["_"+prop] = d;
+			// TODO 이벤트 발생시키기
 
-      // 다시 바인딩 시킬럿인지 프로퍼티만 복사할 것인지??? 생각해봐야함
-      if(typeof(obj["_"+prop]) == "object" && bindChildArr && bindChildArr.length > 0){
-        this.searchAndBind(obj["_"+prop], bindChildArr);
-      }
+			// 다시 바인딩 시킬럿인지 프로퍼티만 복사할 것인지??? 생각해봐야함
+			if(typeof(obj["_"+prop]) == "object" && bindChildArr && bindChildArr.length > 0){
+				this.searchAndBind(obj["_"+prop], bindChildArr);
+			}
 
-    },
-    get : function(){
-      return obj["_"+prop];
-    }
-  });
+		},
+		get : function(){
+			return obj["_"+prop];
+		}
+	});
 
-  console.log("[[[[ bind end ",obj," ]]]", prop);
+	console.log("[[[[ bind end ",obj," ]]]", prop);
 
 };
 
@@ -1210,14 +1210,14 @@ DataView.prototype.createSetAndGet = function(obj, prop){
  * @return binding key string
  */
 DataView.prototype.getBindKeyFromBindedObj = function(obj){
-  var k = obj.__n__;
-  while(obj.__p__){
-    obj = obj.__p__;
-    if(obj.__n__){
-      k = obj.__n__ + "." + k;
-    }
-  }
-  return k;
+	var k = obj.__n__;
+	while(obj.__p__){
+		obj = obj.__p__;
+		if(obj.__n__){
+			k = obj.__n__ + "." + k;
+		}
+	}
+	return k;
 };
 
 /**
@@ -1226,13 +1226,13 @@ DataView.prototype.getBindKeyFromBindedObj = function(obj){
  * @return sub keys Array
  */
 DataView.prototype.findSubBindkeyArr = function(key){
-  var arr = this.registedBindKeyMaps.filter(function(str){
-    return str != key && str.startsWith(key);
-  });
-  for(var i = 0; i < arr.length; i++){
-    arr[i] = arr[i].replace(key + ".", "");
-  }
-  return arr;
+	var arr = this.registedBindKeyMaps.filter(function(str){
+		return str != key && str.startsWith(key);
+	});
+	for(var i = 0; i < arr.length; i++){
+		arr[i] = arr[i].replace(key + ".", "");
+	}
+	return arr;
 };
 
 
@@ -1329,8 +1329,8 @@ DataViewItem.prototype.blank = function(){
  */
 DataViewItem.prototype.show = function(){
 	for(var i = 0; i < this.elements.length; i++){
-    this.elements[i].style.display = this._preStyleDisplay || "block";
-  }
+		this.elements[i].style.display = this._preStyleDisplay || "block";
+	}
 };
 
 /**
@@ -1338,9 +1338,9 @@ DataViewItem.prototype.show = function(){
  */
 DataViewItem.prototype.hide = function(){
 	for(var i = 0; i < this.elements.length; i++){
-    this._preStyleDisplay = this.elements[i].style.display;
-    this.elements[i].style.display = "none";
-  }
+		this._preStyleDisplay = this.elements[i].style.display
+		this.elements[i].style.display = "none";
+	}
 };
 
 /**
@@ -1466,34 +1466,34 @@ var dataview = new DataView();
  * @return NodeList
  */
 function el(){
-  if(!arguments || arguments.length === 0){
-    throw new Error("arguments is required");
-  }
-  var args = Array.prototype.slice.call(arguments);
-  var query = args[0];
+	if(!arguments || arguments.length === 0){
+		throw new Error("arguments is required");
+	}
+	var args = Array.prototype.slice.call(arguments);
+	var query = args[0];
 
-  if(args.length === 1){
-    if(query.querySelectorAll){
-      return query;
-    }
-    return document.querySelectorAll(query);
-  }
+	if(args.length === 1){
+		if(query.querySelectorAll){
+			return query;
+		}
+		return document.querySelectorAll(query);
+	}
 
-  var scope = args[args.length-1];
-  query = args.slice(0, args.length-1).join(",");
+	var scope = args[args.length-1];
+	query = args.slice(0, args.length-1).join(",");
 
-  // 마지막 파라메터가 elemnt인 경우
-  if(scope.querySelectorAll){
-    return scope.querySelectorAll(query);
-  }
+	// 마지막 파라메터가 elemnt인 경우
+	if(scope.querySelectorAll){
+		return scope.querySelectorAll(query);
+	}
 
-  // html인 경우
-  if(scope.indexOf("<") != -1){
-    var parser = new DOMParser();
-    scope = parser.parseFromString(scope, "text/html");
-    return scope.querySelectorAll(query);
-  }
+	// html인 경우
+	if(scope.indexOf("<") != -1){
+		var parser = new DOMParser();
+		scope = parser.parseFromString(scope, "text/html");
+		return scope.querySelectorAll(query);
+	}
 
-  query = args.join(",");
-  return document.querySelectorAll(query);
+	query = args.join(",");
+	return document.querySelectorAll(query);
 }
