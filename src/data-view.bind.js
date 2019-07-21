@@ -868,7 +868,6 @@ DataView.prototype.createElementByUrl = function(url, tagName, initData){
 		var newArr = dataview.addDataViewList(elist);
 
 		for(var i = 0; i < newArr.length; i++){
-			console.log("newArr"+i, newArr[i]);
 			if(newArr[i].type == ATTR_DATA_VIEW){
 				dataview.change(newArr[i].id, initData || {});	//blank
 			}else{
