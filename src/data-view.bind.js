@@ -165,6 +165,12 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 			noDataViewHTML : noDvElementHTML,
 			scope : scope
 		});
+
+		for(var j = 0; j < this.items.length; j++){
+			if(this.items[j].id == dvItem.id){
+				this.items[j] = dvItem;
+			}
+		}
 		newArr.push(dvItem);
 
 		if(!this[dvId]){
@@ -174,7 +180,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 		if(this.createGlobalItems){
 
 			// 같은 이름의 기존 변수가 존재한면..
-			if(window[dvId]){
+			if(window[dvId] && window[dvId].constructor != DataViewItem){
 
 				console.warn('DataViewItem name \''+dvId+'\' is already exist');
 
@@ -194,7 +200,13 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 		}
 	}
 	if(newArr.length > 0){
-		this.items = this.items.concat(newArr);
+		// 추가 중복 방지
+		for(var i = 0; i < newArr.length; i++){
+			if(this.items.indexOf(newArr[i]) == -1){
+				this.items.push(newArr[i]);
+			}
+		}
+		// this.items = this.items.concat(newArr);
 	}
 	return newArr;
 };
@@ -841,6 +853,33 @@ DataView.prototype.clear = function(dataViewId){
 	this.change(dataViewId, null);
 };
 
+/**
+ * url로 element를 가져와서 해당 tag를 변경한 후 dataview에 등록한다.
+ */
+DataView.prototype.createElementByUrl = function(url, tagName, initData){
+	http.get(url, function(res){
+		this._changing = true;
+		// console.log(r);
+		var elist = el(tagName);
+		for(var i = 0; i < elist.length; i++){
+			elist[i].innerHTML = res;
+		}
+
+		var newArr = dataview.addDataViewList(elist);
+
+		for(var i = 0; i < newArr.length; i++){
+			console.log("newArr"+i, newArr[i]);
+			if(newArr[i].type == ATTR_DATA_VIEW){
+				dataview.change(newArr[i].id, initData || {});	//blank
+			}else{
+				dataview.change(newArr[i].id, initData || []);	//clear
+			}
+		}
+
+		this._changing = false;
+	});
+};
+
 
 /**
  * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 변경 혹은 삽입
@@ -1466,8 +1505,8 @@ var dataview = new DataView();
  * @return NodeList
  */
 function el(){
-	if(!arguments || arguments.length === 0){
-		throw new Error("arguments is required");
+	if(!arguments || arguments.length === 0 || !arguments[0]){
+		throw new Error("function el() arguments is required");
 	}
 	var args = Array.prototype.slice.call(arguments);
 	var query = args[0];

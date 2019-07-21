@@ -4,14 +4,47 @@
         <meta charset="UTF-8">
         <title>dataview binding sample</title>
 
-		<script type="text/javascript" src="data-bind.js"></script>
+		<script type="text/javascript" src="data-view.service.js"></script>
+		<script type="text/javascript" src="data-view.bind.js"></script>
 
 		<script type="text/javascript" >
+
+			function getElementsByUrl(url, tagName){
+				var http = new HttpService();
+				http.get(url, function(res){
+					this._changing = true;
+					// console.log(r);
+					var elist = el(tagName);
+					for(var i = 0; i < elist.length; i++){
+						elist[i].innerHTML = res;
+					}
+
+					var newArr = dataview.addDataViewList(elist);
+
+					for(var i = 0; i < newArr.length; i++){
+						console.log("newArr"+i, newArr[i]);
+						if(newArr[i].type == ATTR_DATA_VIEW){
+							dataview.change(newArr[i].id, {});	//blank
+						}else{
+							dataview.change(newArr[i].id, []);	//clear
+						}
+					}
+
+					this._changing = false;
+				});
+			}
+
+			// 1 태그로드
+			// 2 로드앤 뷰
+			getElementsByUrl("ttt-tmp1.html", "ttt-tmp1");
+
+
 
 		</script>
 
     </head>
   <body >
     data binding!!!
+	<ttt-tmp1 data-view="tttt"></ttt-tmp1>
 	</body>
 </html>
