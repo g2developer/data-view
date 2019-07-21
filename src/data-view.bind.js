@@ -48,6 +48,8 @@ function DataView(params){
 	this.referenceData = false;
 	// binding으로 등록된 key 배열
 	this.registedBindKeyMaps = [];
+	// custom tag urls
+	this.customTagUrls = [];
 
 	this.config(params);
 }
@@ -101,11 +103,27 @@ DataView.prototype.initDataView = function(element){
 			this.change(newArr[i].id, []);	//clear
 		}
 	}
+
 	this._initializing = false;
 	this.initialized = true;
 
 };
 
+
+/**
+ * url로 html을 가져와 custom tag에 입히고, dataview를 등록한다.
+ * @param arr ex) [ {tagName:"customTagName", url:"html url", data: "init data"} ]
+ */
+DataView.prototype.initCustomTags = function(arr){
+	this.customTagUrls = arr;
+	if(this.customTagUrls.length > 0){
+		var item = null;
+		for(var i = 0; i < this.customTagUrls.length; i++){
+			item = this.customTagUrls[i];
+			this.addDataViewByUrl(item.url, item.tagName, item.data);
+		}
+	}
+};
 
 /**
  * data-view 혹은 data-list를 찾는다.
@@ -855,8 +873,11 @@ DataView.prototype.clear = function(dataViewId){
 
 /**
  * url로 element를 가져와서 해당 tag를 변경한 후 dataview에 등록한다.
+ * @param url element를 불러올 url
+ * @param tagNam
+ * @param initData
  */
-DataView.prototype.createElementByUrl = function(url, tagName, initData){
+DataView.prototype.addDataViewByUrl = function(url, tagName, initData){
 	http.get(url, function(res){
 		this._changing = true;
 		// console.log(r);
@@ -877,69 +898,6 @@ DataView.prototype.createElementByUrl = function(url, tagName, initData){
 
 		this._changing = false;
 	});
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 변경 혹은 삽입
- * @param url - 로드할 html의 url
- * @param querySelector - 로드한 html을 추가할 query selector
- * @param isOverride - bool 오버라이드 할 것인지
- */
-DataView.prototype.loadAnd = function(url, querySelector, isOverride){
-	jQuery.get(url, function(html){
-		html = dataview.newDataViewHtml(html);
-		if(querySelector){
-			this._changing = true;
-			var el = jQuery(querySelector);
-			if(isOverride){
-				var p = el.parent();
-				var idx = el.index();
-				el.replaceWith(html);
-				el = p.children().eq(idx);
-			}else{
-				el.html(html);
-			}
-			var targetList = this.findDataViewList(el);
-			dataview.refindParent(targetList);
-			this._changing = false;
-		}
-	});
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 변경
- * @param url - 로드할 html의 url
- * @param querySelector - 로드한 html을 추가할 query selector
- */
-DataView.prototype.loadAndOverrideHtml = function(url, querySelector){
-	this.loadAnd(url, querySelector, true);
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 삽입
- * @param url - 로드할 html의 url
- * @param querySelector - 로드한 html을 추가할 query selector
- */
-DataView.prototype.loadAndChangeHtml = function(url, querySelector){
-	this.loadAnd(url, querySelector, false);
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 dataview item에 추가한다.
- * @param url - 로드된 html string
- * @return string - load한 html에 dataview를 적용한 html
- */
-DataView.prototype.newDataViewHtml = function(html){
-	var targetList = this.findDataViewList(html);
-
-	if(!targetList || targetList.length == 0 ) return html;
-
-	this.addDataViewList(targetList);
-	return this.mergeHtmlData(html, {});
 };
 
 
