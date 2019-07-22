@@ -4,18 +4,20 @@
         <meta charset="UTF-8">
         <title>dataview sample</title>
 
-		<script type="text/javascript" src="jquery-3.3.1.min.js"></script>
-		<script type="text/javascript" src="data-view.js"></script>
+		<!-- <script type="text/javascript" src="jquery-3.3.1.min.js"></script>
+		<script type="text/javascript" src="data-view.js"></script> -->
 
+		<script type="text/javascript" src="data-view.service.js"></script>
+		<script type="text/javascript" src="data-view.bind.js"></script>
 		<script type="text/javascript" >
 
-		$(function(){
+		// $(function(){
 // 			dataview.config({
 // 				attr:"dv",
 // 				listAttr:"dl",
 // 				noDataAttr:"ndv"
 // 			}).initDataView();
-		});
+		// });
 
 		// global variables
 		var logined = false;
@@ -73,7 +75,7 @@
 
 
 		// sample list data
-		var list = [
+		var list00 = [
 		{name : "이름", datetime : null, data_flag : "A", color : "red", title : "타이틀11"},
 		{name : "이름1", datetime : 0, data_flag : "B", color : "blue", title : "타이틀22"},
 		{name : "이름2", datetime : "3333", data_flag : "C", color : "green", title : "타이틀33"},
@@ -106,7 +108,7 @@
 		<br>
 		<div data-view="globalView">
 			닉네임 : {{ @logined ? @nick : "로그인해주세요" }} <br/>
-			이름    : {{ @name }} <br/>
+			이름    : {{ @name }} {{aaa}}<br/>
 			{(@logined == true){
 				logined!!
 			}{
@@ -159,7 +161,7 @@
 
 		<!-- list 변수 로드  -->
 		리스트 형식<br>
-		<button onclick="dataview.change('list1', list);">list data load</button>
+		<button onclick="dataview.change('list1', list00);">list data load</button>
 		<button onclick="dataview.append('list1', list2);">list data append</button>
 		<button onclick="dataview.prepend('list1', list2);">list data prepend</button>
 		<button onclick="dataview.update('list1', 0, list2[1]);">list data update 0 index</button>
