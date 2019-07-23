@@ -9,6 +9,7 @@
 
 		<script type="text/javascript" src="data-view.service.js"></script>
 		<script type="text/javascript" src="data-view.bind.js"></script>
+		<script type="text/javascript" src="bind_array.js"></script>
 		<script type="text/javascript" >
 
 		// $(function(){
@@ -168,7 +169,7 @@
 		<button onclick="dataview.remove('list1', 0);">list data remove 0 index</button>
 		<button onclick="dataview.blank('list1')">fill blank</button>
 		<button onclick="dataview.clear('list1')">clear</button>
-		<ul id="list1">
+		<ul>
 			<li data-list="list1" data-no="{{no}}">
 			{{ color  ==  'red' ? @nick : name}} , name:{{{name}}}, title:{{{title}}}, datetime:({{datetime}}), data_flag:[{{data_flag}}], color:{{color}}
 			{( @nick == '닉네임'){

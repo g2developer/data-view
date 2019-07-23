@@ -46,8 +46,6 @@ function DataView(params){
 	this.createGlobalItems = true;
 	// change한 데이터를 dataview data로 참조할 것인지
 	this.referenceData = false;
-	// binding으로 등록된 key 배열
-	this.registedBindKeyMaps = [];
 	// custom tag urls
 	this.customTagUrls = [];
 
@@ -181,7 +179,8 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 			parent : targetList[i].parentNode,
 			noDataView : noDvElement,
 			noDataViewHTML : noDvElementHTML,
-			scope : scope
+			scope : scope,
+			isBind : false
 		});
 
 		dvItem.normalVarKeys = this.getNormalVarKeysOnly(dvItem.template);
@@ -202,7 +201,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 			// 같은 이름의 기존 변수가 존재한면..
 			if(window[dvId] && window[dvId].constructor != DataViewItem){
 
-				console.warn('DataViewItem name \''+dvId+'\' is already exist');
+				console.warn("DataViewItem name \'"+dvId+"\' is already defined variable or tag id attribute.");
 
 				/*var v = window[dvId];
 				if(typeof(v) === 'object' && !Array.isArray(v)){
@@ -389,10 +388,10 @@ DataView.prototype.mergeData = function (tmp, data){
 	}catch(e){
 //		o = escapeToNormalChar(o);
 //		console.error("syntax error " + o + " \n-> " + tmp);
-		tmp = '';
+		tmp = "";
 	}
-	if(tmp == null || tmp == undefined || tmp == 'null' || tmp == 'undefined'){
-		tmp = '';
+	if(tmp == null || tmp == undefined || tmp == "null" || tmp == "undefined"){
+		tmp = "";
 	}
 	return tmp;
 };
@@ -417,18 +416,18 @@ DataView.prototype.getNormalVarKey = function(html){
 	// 리터럴,숫자 제거
 	var tmp = html;
 	// 문자열 제거
-	tmp = tmp.replace(/\'[^\']*\'/g, '');
-	tmp = tmp.replace(/\"[^\"]*\"/g, '');
+	tmp = tmp.replace(/\'[^\']*\'/g, "");
+	tmp = tmp.replace(/\"[^\"]*\"/g, "");
 	// 숫자, 소수제거
-	tmp = tmp.replace(/^\w\d*\.?\d*/g, '');
-	tmp = tmp.replace(/^-\w\d*\.?\d*/g, '');
+	tmp = tmp.replace(/^\w\d*\.?\d*/g, "");
+	tmp = tmp.replace(/^-\w\d*\.?\d*/g, "");
 	// 함수형식 제거
-	tmp = tmp.replace(/\w+(\.\w+)* *\(/g, '');
+	tmp = tmp.replace(/\w+(\.\w+)* *\(/g, "");
 	// 예약어 제거
-	tmp = tmp.replace(/null/g, '');
-	tmp = tmp.replace(/true/g, '');
-	tmp = tmp.replace(/false/g, '');
-	tmp = tmp.replace(/undefined/g, '');
+	tmp = tmp.replace(/null/g, "");
+	tmp = tmp.replace(/true/g, "");
+	tmp = tmp.replace(/false/g, "");
+	tmp = tmp.replace(/undefined/g, "");
 
 	// object 검색 형식
 	// \w+(\.*\w*)* -> item.obj.key
@@ -473,7 +472,7 @@ DataView.prototype.mergeNormalVar = function(html,data){
 	if(match == null) return html;
 	for(var i = 0; i < match.length; i++){
 		var value = this.getDataOfKey(data,match[i]);
-		if(isNaN(value) && typeof value == 'string'){
+		if(isNaN(value) && typeof value == "string"){
 			value = "'"+value+"'";
 		}
 		html = html.replace(match[i], value);
@@ -497,7 +496,7 @@ DataView.prototype.mergeGlobal = function(html){
 	for(var i = 0; i < match.length; i++){
 		var gVar = match[i];
 		var value = eval(gVar.substr(1));
-		if(value && typeof value == 'string' && value != 'null' && value != 'undefined'){
+		if(value && typeof value == "string" && value != "null" && value != "undefined"){
 			value = "'"+value+"'";
 		}
 		html = html.replace(new RegExp(gVar,"g"), value);
@@ -522,12 +521,12 @@ DataView.prototype.mergeIfStateHtmlData = function(html, data){
 		var logicRg = /\{\s*\([^\(\)]*\)\s*\{|\}\s*\([^\(\)]*\)\s*\{/g;
 		var logicMatch = tmp.match(logicRg);
 
-		var result = '';
+		var result = "";
 
 		// if문 중에서 true 인것을 골라 소스를 찾는다.
 		for(var i = 0; i < logicMatch.length; i++){
 
-			var logic = logicMatch[i].replace(/\{|\}/g, '');
+			var logic = logicMatch[i].replace(/\{|\}/g, "");
 			var t = this.mergeData(logic, data);
 			if(t){
 				result = srcArr[i];
@@ -559,17 +558,17 @@ DataView.prototype.getDataOfKey = function(data, key){
 	var result = this.getLiteral(key);
 
 	if(result == null || result == undefined){
-		key = key.replace(/ /g, '');
+		key = key.replace(/ /g, "");
 		// key가 객체인 경우 (xxx.yyy.key 형식)
-		if(key.split('.').length >= 2){
-			var kArr = key.split('.');
+		if(key.split(".").length >= 2){
+			var kArr = key.split(".");
 			var tmp = data;
 			try{
 				for(var j = 0; j < kArr.length; j++){
 					tmp = tmp[kArr[j]];
 				}
 			}catch(e){
-				tmp = '';
+				tmp = "";
 			}
 			result = tmp;
 		}else{
@@ -589,7 +588,7 @@ DataView.prototype.getLiteral = function(key){
 	if(!key) return key;
 	var litTest1 = / *\'.*\' */;
 	var litTest2 = / *\".*\" */;
-	var result = '';
+	var result = "";
 
 	if(litTest1.test(key) ){
 		result = key.substring(key.indexOf("'")+1, key.lastIndexOf("'"));
@@ -616,9 +615,9 @@ DataView.prototype.getNotLiteralArr = function(txt){
 	var arr = tmp.match(/\w+(\.\w+)*/g) || [];
 
 	for(var i = arr.length; i >= 0; i--){
-		if(!isNaN(arr[i]) || arr[i] == 'true' || arr[i] == 'false'){	//숫자면 제외
+		if(!isNaN(arr[i]) || arr[i] == "true" || arr[i] == "false"){	//숫자면 제외
 			arr.splice(i,1);
-		}else if(['amp','lt','gt','typeof','instanceof'].indexOf(arr[i]) != -1){
+		}else if(["amp","lt","gt","typeof","instanceof"].indexOf(arr[i]) != -1){
 			// 예약어 제거
 			arr.splice(i,1);
 		}
@@ -670,26 +669,29 @@ DataView.prototype.change = function(dataViewId, data){
 	var ele = item.elements;
 	var html = "";
 
-	if(!this.referenceData){
-		data = clone(data);
-	}
+	if(!item.isBind){
 
-	if(item.type == ATTR_DATA_LIST){
-		if(data){
-			item._data = Array.isArray(data) ? data : [data];
-		}else{
-			if(this.referenceData){
-				for(var i = item._data.length - 1; i >= 0; i--){
-					item._data.pop();
-				}
-			}else{
-				item._data = data;
-			}
+		if(!this.referenceData){
+			data = clone(data);
 		}
-		html = this.getDataViewListHtml(dataViewId, data);
-	}else{
-		item._data = data;
-		html = this.getDataViewHtml(dataViewId, data);
+
+		if(item.type == ATTR_DATA_LIST){
+			if(data){
+				item.data = Array.isArray(data) ? data : [data];
+			}else{
+				if(this.referenceData){
+					for(var i = item.data.length - 1; i >= 0; i--){
+						item.data.pop();
+					}
+				}else{
+					item.data = data;
+				}
+			}
+			html = this.getDataViewListHtml(dataViewId, data);
+		}else{
+			item.data = data;
+			html = this.getDataViewHtml(dataViewId, data);
+		}
 	}
 
 	this._changing = true;
@@ -721,26 +723,14 @@ DataView.prototype.change = function(dataViewId, data){
  * @param dataViewId - dataview 식별자
  * @param data - object or array
  */
-DataView.prototype.refresh = function(dataViewId){
+DataView.prototype.refresh = function(dataViewId, refreshData){
 	//if(!data) return;
 	var item = this.getDataViewItem(dataViewId);
 	var ele = item.elements;
 	var html = "";
 
 	if(item.type == ATTR_DATA_LIST){
-		console.error(" list binding은 준비중입니다.");
-		// if(data){
-		// 	item.data = Array.isArray(data) ? data : [data];
-		// }else{
-		// 	if(this.referenceData){
-		// 		for(var i = item.data.length - 1; i >= 0; i--){
-		// 			item.data.pop();
-		// 		}
-		// 	}else{
-		// 		item.data = data;
-		// 	}
-		// }
-		// html = this.getDataViewListHtml(dataViewId, data);
+		html = this.getDataViewListHtml(dataViewId, item.data);
 	}else{
 		html = this.getDataViewHtml(dataViewId, item.data);
 	}
@@ -779,24 +769,26 @@ DataView.prototype.append = function(dataViewId, data){
 	var item = this.getDataViewItem(dataViewId);
 	var ele = item.elements;
 
-	if(!item.data){
-		item.data = this.referenceData ? data : clone(data);
-	}else{
-		if(Array.isArray(item.data)){
-			if(Array.isArray(data)){
-				for(var i = 0; i < data.length; i++){
-					item.data.push(data[i]);
+	if(!item.isBind){
+		if(!item.data){
+			item.data = this.referenceData ? data : clone(data);
+		}else{
+			if(Array.isArray(item.data)){
+				if(Array.isArray(data)){
+					for(var i = 0; i < data.length; i++){
+						item.data.push(data[i]);
+					}
+				}else{
+					item.data.push(data);
 				}
 			}else{
-				item.data.push(data);
-			}
-		}else{
-			if(Array.isArray(data)){
-				var c = clone(data);
-				c.unshift(item.data);
-				item.data = c;
-			}else{
-				item.data = [item.data, data];
+				if(Array.isArray(data)){
+					var c = clone(data);
+					c.unshift(item.data);
+					item.data = c;
+				}else{
+					item.data = [item.data, data];
+				}
 			}
 		}
 	}
@@ -836,26 +828,27 @@ DataView.prototype.prepend = function(dataViewId, data){
 	var item = this.getDataViewItem(dataViewId);
 	var ele = item.elements;
 
-	if(!item.data){
-		item.data = this.referenceData ? data : clone(data);
-	}else{
-		if(Array.isArray(item.data)){
-			if(Array.isArray(data)){
-				for(var i = 0; i < data.length; i++){
-					item.data.unshift(data[i]);
+	if(!item.isBind){
+		if(!item.data){
+			item.data = this.referenceData ? data : clone(data);
+		}else{
+			if(Array.isArray(item.data)){
+				if(Array.isArray(data)){
+					for(var i = 0; i < data.length; i++){
+						item.data.unshift(data[i]);
+					}
+				}else{
+					item.data.unshift(data);
 				}
 			}else{
-				item.data.unshift(data);
+				if(Array.isArray(data)){
+					var c = clone(data);
+					c.push(item.data);
+					item.data = c;
+				}else{
+					item.data = [data, item.data];
+				}
 			}
-		}else{
-			if(Array.isArray(data)){
-				var c = clone(data);
-				c.push(item.data);
-				item.data = c;
-			}else{
-				item.data = [data, item.data];
-			}
-
 		}
 	}
 
@@ -897,7 +890,9 @@ DataView.prototype.update = function(dataViewId, idx, data){
 	var ele = this.getDataViewElements(item)[idx];
 	if(ele.style.display == "none") return;
 
-	item.data[idx] = data;
+	if(!item.isBind){
+		item.data[idx] = data;
+	}
 	var html = this.getDataViewHtml(dataViewId, data);
 
 	this._changing = true;
@@ -917,9 +912,11 @@ DataView.prototype.remove = function(dataViewId, idx){
 	if(!item.data || item.data.length < idx) return;
 
 	var ele = item.elements[idx];
-	if(ele.style.display == "none") return;
+	if(!ele || ele.style.display == "none") return;
 
-	item.data.splice(idx,1);
+	if(!item.isBind){
+		item.data.splice(idx,1);
+	}
 
 	this._changing = true;
 	if(this.getDataViewElements(item).length > 1){
@@ -1034,7 +1031,7 @@ DataView.prototype.objToForm = function(dataViewId, obj){
 		}else if(inpt.type == "checkbox"){
 
 			var valArr = Array.isArray(obj[k]) ? obj[k] : null;
-			if(!valArr && typeof obj[k] == 'string'){
+			if(!valArr && typeof obj[k] == "string"){
 				valArr = obj[k].split(",");
 			}
 
@@ -1050,7 +1047,7 @@ DataView.prototype.objToForm = function(dataViewId, obj){
 		}else if(inpt.type == "select-multiple"){
 
 			var valArr = Array.isArray(obj[k]) ? obj[k] : null;
-			if(!valArr && typeof obj[k] == 'string'){
+			if(!valArr && typeof obj[k] == "string"){
 				valArr = obj[k].split(",");
 			}
 			for(var i = 0; i < inpt.options.length; i++){
@@ -1141,11 +1138,11 @@ DataView.prototype.clearForm = function(dataViewId){
 		if(list[i].type == "radio" || list[i].type == "checkbox"){
 			list[i].checked = false;
 		}else if(list[i].type == "color"){
-			list[i].value = '#000000';
+			list[i].value = "#000000";
 		}else if(list[i].type == "select-one"){
 			list[i].selectedIndex = 0;
 		}else{
-			list[i].value = '';
+			list[i].value = "";
 		}
 	}
 };
@@ -1200,9 +1197,10 @@ DataView.prototype._createElements = function(markup){
  * binding key 배열로 object를 바인딩할 수 있게 변경한다.
  * @param obj 변경할 object
  * @param bindArr binding keys
+ * @param listener model change listener
  */
-DataView.prototype.searchAndBind = function(obj, bindArr){
-
+DataView.prototype.bind = function(obj, bindArr, listener){
+	if(!obj) return;
 	var k = null;
 	for(var i = 0; i < bindArr.length; i++){
 		k = bindArr[i];
@@ -1215,15 +1213,17 @@ DataView.prototype.searchAndBind = function(obj, bindArr){
 			this.createSetAndGet(tmp, kArr[j]);
 
 			// 마지막이 아니고 세팅하려는 객체가 없으면
-			if(j != kArr.length-1 && !tmp[kArr[j]]){
-				tmp["_" + kArr[j]] = {};
+			// if(j != kArr.length-1 && !tmp[kArr[j]]){
+			// 	tmp["_" + kArr[j]] = {};
+			// }
+			if(!tmp){
+				break;
 			}
-
 			var p = tmp;
 			tmp = tmp[kArr[j]];
 			if(tmp && typeof(tmp) == "object"){
 				tmp.__p__ = p;	// object parent
-				tmp.__n__ = kArr[j];
+				tmp.__k__ = kArr[j];
 			}
 		}
 	}
@@ -1239,6 +1239,7 @@ DataView.prototype.searchAndBind = function(obj, bindArr){
 		var arr = this.bindArr.filter(function(str){
 			return str != key && str.startsWith(key);
 		});
+
 		for(var i = 0; i < arr.length; i++){
 			arr[i] = arr[i].replace(key + ".", "");
 		}
@@ -1246,30 +1247,36 @@ DataView.prototype.searchAndBind = function(obj, bindArr){
 	};
 
 	obj.modelChangeListeners = [];
+	if(listener && obj.modelChangeListeners.indexOf(listener) == -1){
+		obj.modelChangeListeners.push(listener);
+	}
+
 	obj.dispatch = function(key){
 		for(var i = 0; i < this.modelChangeListeners.length; i++){
-			this.modelChangeListeners[i].refresh();
+			this.modelChangeListeners[i].refresh({
+				type: "update",
+				data: this,
+				key: key
+			});
 		}
 	};
 };
 
+
 /**
-* create setter and getter
+* 하나의 프로퍼티에 대한 setter and getter를 등록합니다.
 * @param obj create target
 * @param prop setter and getter key
 */
 DataView.prototype.createSetAndGet = function(obj, prop){
 
-	if(Object.getOwnPropertyDescriptor(obj, prop) &&
-		Object.getOwnPropertyDescriptor(obj, prop).set ) {
+	if(!obj ||
+		(Object.getOwnPropertyDescriptor(obj, prop) &&
+		Object.getOwnPropertyDescriptor(obj, prop).set) ) {
 		return;
 	}
 
 	// console.log("[[[[ bind to ",obj," ]]]", prop);
-
-	if(!obj){
-		obj = {};
-	}
 
 	obj["_"+prop] = obj[prop] || null;
 
@@ -1280,30 +1287,27 @@ DataView.prototype.createSetAndGet = function(obj, prop){
 
 	Object.defineProperty(obj, prop, {
 		set : function(d){
-			console.log("set " + prop + " = ", d);
 
-			var childKeyArr = null;
+			obj["_"+prop] = d;
+
 			var parent = null;
 			var bindKey = null;
 			var bindChildArr = null;
 			if(obj["_"+prop] && typeof(obj["_"+prop]) == "object"){
-				childKeyArr = obj["_"+prop].__c__;
-				parent = obj["_"+prop].__p__;
-				bindKey = this.getBindKey(obj["_" + prop]);
+				obj["_"+prop].__p__ = obj;
+				obj["_"+prop].__k__ = prop;
+				bindKey = this.getBindKey(obj, prop);
 				bindChildArr = this.getRoot().findSubBindkeyArr(bindKey);
 			} else {
 				bindKey = this.getBindKey(obj, prop);
 			}
 
-			obj["_"+prop] = d;
-			// TODO 이벤트 발생시키기
-
 			// 다시 바인딩 시킬럿인지 프로퍼티만 복사할 것인지??? 생각해봐야함
 			if(typeof(obj["_"+prop]) == "object" && bindChildArr && bindChildArr.length > 0){
-				dataview.searchAndBind(obj["_"+prop], bindChildArr);
+				dataview.bind(obj["_"+prop], bindChildArr);
 			}
 
-			this.getRoot().dispatch();
+			this.getRoot().dispatch(bindKey);
 		},
 		get : function(){
 			return obj["_"+prop];
@@ -1323,18 +1327,151 @@ DataView.prototype.createSetAndGet = function(obj, prop){
 	 * @param obj key를 찾을 obj
 	 * @return binding key string
 	 */
-	obj.getBindKey = function(obj, prop){
-		var k = prop ? obj.__n__ + "." + prop : obj.__n__;
+	obj.getBindKey = function(obj, key){
+		var k = obj.__k__ || "";
+		k = k && key ? k + "." + key : key;
 		while(obj.__p__){
 			obj = obj.__p__;
-			if(obj.__n__){
-				k = obj.__n__ + "." + k;
+			if(obj.__k__){
+				k = obj.__k__ + "." + k;
 			}
 		}
 		return k;
 	};
 
 	// console.log("[[[[ bind end ",obj," ]]]", prop);
+
+};
+
+
+DataView.prototype.bindList = function(arr, bindArr, listener){
+
+	arr.bindArr = bindArr;
+	arr.modelChangeListeners = [];
+	if(arr.modelChangeListeners.indexOf(listener) == -1){
+		arr.modelChangeListeners.push(listener);
+	}
+
+	arr.dispatch = function(event){
+		for(var i = 0; i < this.modelChangeListeners.length; i++){
+			this.modelChangeListeners[i].refresh(event);
+		}
+	};
+
+	arr.refresh = function(event){
+		event.index = this.indexOf(event.data);
+		this.dispatch(event);
+	};
+
+	for(var i = 0; i < arr.length; i++){
+		dataview.bind(arr[i], arr.bindArr, arr);
+		// arr[i].modelChangeListeners = [arr];
+	}
+
+
+	// add last
+	arr.push = function(){
+		var result = Array.prototype.push.apply(this, arguments);
+		var item = arguments[0];
+		if(isObj(item)){
+			dataview.bind(item, this.bindArr, this);
+			// item.modelChangeListeners = [this];
+		}
+		var index = this.indexOf(item);
+
+		this.dispatch({
+			type: "push",
+			data: item,
+			index: index
+		});
+		return result;
+	};
+
+
+	// remove last
+	arr.pop = function(){
+		if(this.length == 0) return;
+		var index = this.length - 1;
+		var item = this[index];
+		this.dispatch({
+			type: "pop",
+			data: item,
+			index: index
+		});
+		item.modelChangeListeners = null;
+		var result = Array.prototype.pop.apply(this);
+		return result;
+	};
+
+
+	// remove first
+	arr.shift = function(){
+		if(this.length == 0) return;
+		var index = 0;
+		var item = this[index];
+		this.dispatch({
+			type: "shift",
+			data: item,
+			index: index
+		});
+		item.modelChangeListeners = null;
+		var result = Array.prototype.shift.apply(this, arguments);
+		return result;
+	};
+
+
+	// add first
+	arr.unshift = function(){
+		var result = Array.prototype.unshift.apply(this, arguments);
+		var item = arguments[0];
+		if(isObj(item)){
+			dataview.bind(item, this.bindArr, this);
+			// item.modelChangeListeners = [this];
+		}
+		var index = this.indexOf(item);
+
+		this.dispatch({
+			type: "unshift",
+			data: item,
+			index: index
+		});
+		return result;
+	};
+
+
+	// remove arguments[0] ~ arguments[1]
+	arr.splice = function(){
+		var result = Array.prototype.splice.apply(this, arguments);
+		if(this.length == 0 || result.length == 0) return;
+		var index = arguments[0];
+		var size = arguments[1];
+		this.dispatch({
+			type: "splice",
+			data: result,
+			index: index,
+			size: size
+		});
+		result.forEach(function(obj){
+			obj.modelChangeListeners = null;
+		});
+		return result;
+	};
+
+
+	// remove at index
+	arr.removeAt = function(index){
+		var result = Array.prototype.splice.apply(this, [index,1]);
+		if(this.length == 0 || result.length == 0) return;
+		this.dispatch({
+			type: "removeAt",
+			data: result,
+			index: index
+		});
+		result.forEach(function(obj){
+			obj.modelChangeListeners = null;
+		});
+		return result;
+	};
 
 };
 
@@ -1359,27 +1496,29 @@ function DataViewItem(params){
 		this[k] = params[k];
 	}
 }
-// DataViewItem.prototype.set = {
-// 	data : function(){
-// 		console.log("data setter");
-// 	}
-// };
+
 
 DataViewItem.prototype = {
 	_data : null,
 	set data(obj){
+		if(this.isBind){
 
-		if(!obj){
-			dataview.change(this.id, null);
-			return;
+			if(this.type == ATTR_DATA_VIEW){
+
+				dataview.bind(obj, this.normalVarKeys, this);
+				this._data = obj;
+				// if(this._data && this._data.modelChangeListeners.indexOf(this) == -1){
+				// 	this._data.modelChangeListeners.push(this);
+				// }
+
+			} else if(this.type == ATTR_DATA_LIST){
+				dataview.bindList(obj, this.normalVarKeys, this);
+				this._data = obj;
+			}
+			this.refresh();
+		} else {
+			this._data = obj;
 		}
-		// console.log(this.id + " setter");
-		dataview.searchAndBind(obj, this.normalVarKeys);
-		this._data = obj;
-		if(this._data.modelChangeListeners.indexOf(this) == -1){
-			this._data.modelChangeListeners.push(this);
-		}
-		this.refresh();
 	},
 	get data(){
 		// console.log(this.id + " getter");
@@ -1403,8 +1542,28 @@ DataViewItem.prototype.change = function(data){
 /**
  * item에 저장되 있는 data로 뷰를 변경한다.
  */
-DataViewItem.prototype.refresh = function(){
-	dataview.refresh(this.id);
+DataViewItem.prototype.refresh = function(refreshData){
+	if(!refreshData || this.type == ATTR_DATA_VIEW){
+		dataview.refresh(this.id, refreshData);
+		return;
+	}
+
+	switch (refreshData.type) {
+		case "update"	: this.update(refreshData.index, refreshData.data); break;
+		case "push"		: this.append(refreshData.data); break;
+		case "unshift"	: this.prepend(refreshData.data); break;
+		case "pop"		:
+		case "shift"	:
+		case "removeAt"	: this.remove(refreshData.index); break;
+		case "splice"	:
+			var last = refreshData.index + refreshData.size - 1;
+			for(var i = last; i >= refreshData.index; i--){
+				this.remove(i);
+			}
+			break;
+		default:
+			dataview.refresh(this.id, refreshData);
+	}
 };
 
 
@@ -1527,9 +1686,9 @@ DataViewItem.prototype.form = function(data){
  * @returns
  */
 function escapeToNormalChar(str){
-	return str.replace(/&lt;/g, '<')
-	.replace(/&gt;/g, '>')
-	.replace(/&amp;/g, '&');
+	return str.replace(/&lt;/g, "<")
+	.replace(/&gt;/g, ">")
+	.replace(/&amp;/g, "&");
 }
 
 
@@ -1593,10 +1752,6 @@ function _dvinit(e){
 }
 
 
-//dataview 생성
-var dataview = new DataView();
-
-
 /**
  * get elements
  * @return NodeList
@@ -1633,3 +1788,17 @@ function el(){
 	query = args.join(",");
 	return document.querySelectorAll(query);
 }
+
+/**
+ * is object ?
+ * @param anything
+ * @return boolean
+ */
+function isObj(obj){
+	return typeof(obj) == "object";
+}
+
+
+
+//dataview 생성
+var dataview = new DataView();
