@@ -1201,6 +1201,11 @@ DataView.prototype._createElements = function(markup){
  */
 DataView.prototype.bind = function(obj, bindArr, listener){
 	if(!obj) return;
+	// TODO 배열인 경우 bindList로?
+	// if(Array.isArray(obj)){
+	// 	this.bindList(obj, bindArr, listener);
+	// 	return;
+	// }
 	var k = null;
 	for(var i = 0; i < bindArr.length; i++){
 		k = bindArr[i];
@@ -1304,7 +1309,7 @@ DataView.prototype.createSetAndGet = function(obj, prop){
 
 			// 다시 바인딩 시킬럿인지 프로퍼티만 복사할 것인지??? 생각해봐야함
 			if(typeof(obj["_"+prop]) == "object" && bindChildArr && bindChildArr.length > 0){
-				dataview.bind(obj["_"+prop], bindChildArr);
+				dataview.bind(obj["_"+prop], bindChildArr, obj);
 			}
 
 			this.getRoot().dispatch(bindKey);
@@ -1367,7 +1372,6 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 		dataview.bind(arr[i], arr.bindArr, arr);
 		// arr[i].modelChangeListeners = [arr];
 	}
-
 
 	// add last
 	arr.push = function(){
@@ -1473,6 +1477,33 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 		return result;
 	};
 
+
+	if(Proxy){
+		var parr = new Proxy(arr, {
+			set (target, index, value, receiver){
+				var result = Reflect.set(target, index, value, receiver);
+				if(typeof(value) == "object" && !isNaN(index)){
+					dataview.bind(value, target.bindArr, target);
+					target.dispatch({
+						type: "update",
+						data: value,
+						index: index
+					});
+				}
+				return result;
+			}
+			// get: function(target, index, receiver){
+			// 	return Reflect.get(target, index, receiver);
+			// }
+		});
+
+		for(var k in window){
+			if(["webkitStorageInfo"].indexOf(k) == -1 && Array.isArray(window[k]) && window[k] == arr){
+				eval(k + " = parr;");
+				break;
+			}
+		}
+	}
 };
 
 
