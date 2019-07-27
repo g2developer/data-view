@@ -33,7 +33,7 @@ var minFileLicense = '/**\n'
 gulp.task('scripts', function() {
     return gulp.src('src/js/*.js')
         .pipe(replace('#date#', res))
-		.pipe(concat('all.js'))
+		.pipe(concat('data-view.js'))
         .pipe(gulp.dest('dist'))
         .pipe(rename('data-view'+version+'.js'))
         .pipe(gulp.dest('dist'))
