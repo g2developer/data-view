@@ -386,8 +386,8 @@ DataView.prototype.mergeData = function (tmp, data){
 	try{
 		tmp = eval(tmp);
 	}catch(e){
-//		o = escapeToNormalChar(o);
-//		console.error("syntax error " + o + " \n-> " + tmp);
+		// o = escapeToNormalChar(o);
+		// console.error("syntax error " + o + " \n-> " + tmp);
 		tmp = "";
 	}
 	if(tmp == null || tmp == undefined || tmp == "null" || tmp == "undefined"){
@@ -431,7 +431,7 @@ DataView.prototype.getNormalVarKey = function(html){
 
 	// object 검색 형식
 	// \w+(\.*\w*)* -> item.obj.key
-	var rg = /[A-z]\w*(\.\w+)*/g;
+	var rg = /[a-zA-Z_$]+\w*([\[0-9]+\])*(\.[a-zA-Z_$]+\w*([\[0-9]+\])*)*/g;
 
 	var match = tmp.match(rg);
 	return match;
@@ -556,18 +556,18 @@ DataView.prototype.mergeIfStateHtmlData = function(html, data){
  */
 DataView.prototype.getDataOfKey = function(data, key){
 	var result = this.getLiteral(key);
-
 	if(result == null || result == undefined){
 		key = key.replace(/ /g, "");
 		// key가 객체인 경우 (xxx.yyy.key 형식)
-		if(key.split(".").length >= 2){
-			var kArr = key.split(".");
+		var kArr = key.match(/[\w$]+/g);
+		if(kArr && kArr.length >= 2){
 			var tmp = data;
 			try{
 				for(var j = 0; j < kArr.length; j++){
 					tmp = tmp[kArr[j]];
 				}
 			}catch(e){
+				// console.error(e);
 				tmp = "";
 			}
 			result = tmp;
@@ -984,7 +984,6 @@ DataView.prototype.clear = function(dataViewId){
 DataView.prototype.addDataViewByUrl = function(url, tagName, initData){
 	http.get(url, function(res){
 		this._changing = true;
-		// console.log(r);
 		var elist = el(tagName);
 		for(var i = 0; i < elist.length; i++){
 			elist[i].innerHTML = res;
@@ -1228,17 +1227,6 @@ DataView.prototype.addOnBindModel = function(obj, bindArr, listener){
 			this.modelChangeListeners[i].refresh(event);
 		}
 	};
-
-	// obj.dispatch = function(key){
-	// 	for(var i = 0; i < this.modelChangeListeners.length; i++){
-	// 		this.modelChangeListeners[i].refresh({
-	// 			type: "update",
-	// 			data: this,
-	// 			key: key
-	// 		});
-	// 	}
-	// };
-
 };
 
 
@@ -1253,23 +1241,46 @@ DataView.prototype.addOnBindChangeListener = function(obj, bindChangeCallback){
 
 
 /**
+ * 같은 조건으로 바인딩 되었는지
+ * @param obj 주입할 target object
+ * @listener model change listener
+ */
+DataView.prototype.isBindEqual = function(obj, bindArr, listener){
+	var every = obj.bindArr && obj.bindArr.every(function(cur){
+		return bindArr.indexOf(cur) != -1;
+	});
+	if(every &&
+		obj.modelChangeListeners &&
+		obj.modelChangeListeners.indexOf(listener) != -1 ){
+		return true;
+	}
+	return false;
+};
+
+
+/**
  * binding key 배열로 object를 바인딩할 수 있게 변경한다.
  * @param obj 변경할 object
  * @param bindArr binding keys
  * @param listener model change listener
  */
 DataView.prototype.bind = function(obj, bindArr, listener){
-	if(!obj) return;
-	// TODO 배열인 경우 bindList로?
-	if(Array.isArray(obj)){
-		this.bindList(obj, bindArr, listener);
+	if(!obj || this.isBindEqual(obj, bindArr, listener)) return;
+
+	if(!Array.isArray(obj)){
+		this.addOnBindModel(obj, bindArr, listener);
+		this.addOnBindChangeListener(obj, function(event){
+			var newEvent = {
+				type : "object",
+				key : (this.__k__ ?  this.__k__ + "." : "") + event.key,
+				model: this,
+				child: event
+			};
+			this.dispatch(newEvent);
+		});
+	}else {
 		return;
 	}
-
-	this.addOnBindModel(obj, bindArr, listener);
-	this.addOnBindChangeListener(obj, function(event){
-		this.dispatch(event);
-	});
 
 	/**
 	 * 등록된 bindkey중 key 하위의 key들을 찾아 리턴한다.
@@ -1282,7 +1293,10 @@ DataView.prototype.bind = function(obj, bindArr, listener){
 		});
 
 		for(var i = 0; i < arr.length; i++){
-			arr[i] = arr[i].replace(key + ".", "");
+			arr[i] = arr[i].replace(key, "");
+			if(arr[i].indexOf(".") == 0){
+				arr[i] = arr[i].replace(".", "");
+			}
 		}
 		return arr;
 	};
@@ -1291,27 +1305,33 @@ DataView.prototype.bind = function(obj, bindArr, listener){
 	for(var i = 0; i < bindArr.length; i++){
 		k = bindArr[i];
 
-		var kArr = k.split(".");
+		// var kArr = k.split(".");
+		var kArr = k.match(/\w+/g);
 		var tmp = obj;
 
 		for(var j = 0; j < kArr.length; j++){
 			if(!tmp){
 				break;
 			}
+
 			var subKey = kArr[j];
 			var child = tmp[subKey];
+
 			if(child && typeof(child) == "object"){
 				child.__p__ = tmp;	// object parent
 				child.__k__ = subKey;
 				child.__c__ = obj.findSubBindkeyArr(subKey);
-				this.addOnBindModel(child, child.__c__, tmp);
-				this.addOnBindChangeListener(child, function(event){
-					event.key = this.__k__ + "." + event.key;
-					this.dispatch(event);
-				});
+
+				if(Array.isArray(child)){
+					tmp[subKey] = this.bindList(child, child.__c__, child.__p__);
+				} else {
+					this.bind(child, child.__c__, child.__p__);
+				}
 			}
-			// create child set get
-			this.createSetAndGet(tmp, subKey);
+
+			if(!Array.isArray(tmp)){
+				this.createSetAndGet(tmp, subKey);
+			}
 
 			tmp = tmp[subKey];
 		}
@@ -1333,7 +1353,6 @@ DataView.prototype.createSetAndGet = function(obj, prop){
 		return;
 	}
 
-	// console.log("[[[[ bind to ",obj," ]]]", prop);
 	obj["_"+prop] = obj[prop];
 
 	Object.defineProperty(obj, prop, {
@@ -1341,14 +1360,19 @@ DataView.prototype.createSetAndGet = function(obj, prop){
 
 			obj["_"+prop] = d;
 
-			var bindChildArr = obj["_"+prop]["__c__"];
+			var bindChildArr = obj.findSubBindkeyArr(prop);
+
 			if(typeof(obj["_"+prop]) == "object" && bindChildArr && bindChildArr.length > 0){
-				dataview.bind(obj["_"+prop], bindChildArr, obj);
+				if(Array.isArray(obj["_"+prop])){
+					obj["_"+prop] = dataview.bindList(obj["_"+prop], bindChildArr, obj);
+				}else {
+					dataview.bind(obj["_"+prop], bindChildArr, obj);
+				}
 			}
 
 			this.dispatch({
 				type: "object",
-				key: prop,
+				key: (this.__k__ ? this.__k__ + "." + prop : prop),
 				data: d,
 				model: obj
 			});
@@ -1383,39 +1407,40 @@ DataView.prototype.createSetAndGet = function(obj, prop){
 	// 	return k;
 	// };
 
-	// console.log("[[[[ bind end ",obj," ]]]", prop);
-
 };
 
 
 DataView.prototype.bindList = function(arr, bindArr, listener){
-	if(!arr) return arr;
+	if(!arr || this.isBindEqual(arr, bindArr, listener)) return arr;
 	if(arr.__isProxy__ && Array.isArray(arr)){
 		arr = arr.__target__;
 	}
 
 	this.addOnBindModel(arr, bindArr, listener);
 	this.addOnBindChangeListener(arr, function(event){
-		// console.log("arr model changed ", event);
 		var index = this.indexOf(event.model);
 		var newEvent = {
 			type: "update",
-			data: event.model,
+			data: this[index],
 			index: index,
-			model: this
+			model: this,
+			child: event
 		};
-		if(event.type == "object"){
-			// newEvent.key = (this.__k__ || "") + "[" + index + "]" + "." + event.key;
-			newEvent.key = "[" + index + "]" + "." + event.key;
-		} else {
-			// newEvent.key = (this.__k__ || "") + "[" + index + "]" + "[" + event.index + "]";
-			newEvent.key = "[" + index + "]" + "[" + event.index + "]";
-		}
+		newEvent.key = (this.__k__ || "") + "." + index + "." + event.key;
+		// if(event.type == "object"){
+		// 	// newEvent.key = (this.__k__ || "") + "[" + index + "]" + "." + event.key;
+		// 	newEvent.key = (this.__k__ || "") + "[" + index + "]" + "." + event.key;
+		// } else {
+		// 	// newEvent.key = (this.__k__ || "") + "[" + index + "]" + "[" + event.index + "]";
+		// 	newEvent.key = (this.__k__ || "") + "[" + index + "]" + "[" + event.index + "]";
+		// }
 		this.dispatch(newEvent);
 	});
 
 	for(var i = 0; i < arr.length; i++){
-		dataview.bind(arr[i], arr.bindArr, arr);
+		if(isObj(arr[i])){
+			dataview.bind(arr[i], arr.bindArr, arr);
+		}
 		// arr[i].modelChangeListeners = [arr];
 	}
 
@@ -1429,52 +1454,56 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 			// item.modelChangeListeners = [this];
 		}
 		var index = this.indexOf(item);
-
+		this.__chaning__ = false;
 		this.dispatch({
 			type: "push",
 			data: item,
 			index: index,
 			model: this
 		});
-		this.__chaning__ = false;
 		return result;
 	};
 
 
 	// remove last
 	arr.pop = function(){
-		if(this.length == 0) return;
+		// if(this.length == 0) return;
 		this.__chaning__ = true;
 		var index = this.length - 1;
 		var item = this[index];
+		if(isObj(item) && item.modelChangeListeners){
+			item.modelChangeListeners = undefined;
+		}
+		var result = Array.prototype.pop.apply(this);
+		this.__chaning__ = false;
 		this.dispatch({
 			type: "pop",
 			data: item,
 			index: index,
 			model: this
 		});
-		item.modelChangeListeners = null;
-		var result = Array.prototype.pop.apply(this);
-		this.__chaning__ = false;
 		return result;
 	};
 
 
 	// remove first
 	arr.shift = function(){
-		if(this.length == 0) return;
+		// if(this.length == 0) return;
 		this.__chaning__ = true;
 		var index = 0;
 		var item = this[index];
+		if(isObj(item) && item.modelChangeListeners){
+			item.modelChangeListeners = undefined;
+		}
+		var result = Array.prototype.shift.apply(this, arguments);
+		this.__chaning__ = false;
+
 		this.dispatch({
 			type: "shift",
 			data: item,
 			index: index,
 			model: this
 		});
-		item.modelChangeListeners = null;
-		var result = Array.prototype.shift.apply(this, arguments);
-		this.__chaning__ = false;
 		return result;
 	};
 
@@ -1489,14 +1518,13 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 			// item.modelChangeListeners = [this];
 		}
 		var index = this.indexOf(item);
-
+		this.__chaning__ = false;
 		this.dispatch({
 			type: "unshift",
 			data: item,
 			index: index,
 			model: this
 		});
-		this.__chaning__ = false;
 		return result;
 	};
 
@@ -1511,6 +1539,12 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 		}
 		var index = arguments[0];
 		var size = arguments[1];
+		result.forEach(function(item){
+			if(isObj(item) && item.modelChangeListeners){
+				item.modelChangeListeners = undefined;
+			}
+		});
+		this.__chaning__ = false;
 		this.dispatch({
 			type: "splice",
 			data: result,
@@ -1518,10 +1552,6 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 			size: size,
 			model: this
 		});
-		result.forEach(function(obj){
-			obj.modelChangeListeners = null;
-		});
-		this.__chaning__ = false;
 		return result;
 	};
 
@@ -1534,15 +1564,17 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 			this.__chaning__ = false;
 			return;
 		}
+		result.forEach(function(item){
+			if(isObj(item) && item.modelChangeListeners){
+				item.modelChangeListeners = undefined;
+			}
+		});
+		this.__chaning__ = false;
 		this.dispatch({
 			type: "removeAt",
 			data: result,
 			index: index
 		});
-		result.forEach(function(obj){
-			obj.modelChangeListeners = null;
-		});
-		this.__chaning__ = false;
 		return result;
 	};
 
@@ -1556,14 +1588,17 @@ DataView.prototype.bindList = function(arr, bindArr, listener){
 				// } else {
 				// 	Reflect.set(target, index, value, receiver);
 				// }
-				if(typeof(value) == "object" && !isNaN(index)){
-					dataview.bind(value, target.bindArr, target);
-					if(!target.__chaning__){
 
+				if(!isNaN(index)){
+					if(typeof(value) == "object"){
+						dataview.bind(value, target.bindArr, target);
+					}
+					if(!target.__chaning__){
 						target.dispatch({
 							type: "update",
 							data: value,
-							index: index
+							index: index,
+							model: target
 						});
 					}
 				}
@@ -1636,7 +1671,6 @@ DataViewItem.prototype = {
 		}
 	},
 	get data(){
-		// console.log(this.id + " getter");
 		return this._data;
 	}
 };
@@ -1658,7 +1692,6 @@ DataViewItem.prototype.change = function(data){
  * item에 저장되 있는 data로 뷰를 변경한다.
  */
 DataViewItem.prototype.refresh = function(refreshData){
-	console.log("dataview item refresh ", refreshData);
 	if(this._changing) return;
 	if(!refreshData || this.type == ATTR_DATA_VIEW){
 		dataview.refresh(this.id, refreshData);
