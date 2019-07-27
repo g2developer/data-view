@@ -8,10 +8,11 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var header = require('gulp-header');
 var replace = require('gulp-replace');
+var concat = require('gulp-concat');
 
 // Lint Task
 gulp.task('lint', function() {
-    return gulp.src('src/js/data-view.js')
+    return gulp.src('src/js/*.js')
         .pipe(jshint())
         .pipe(jshint.reporter('default'));
 });
@@ -30,8 +31,9 @@ var minFileLicense = '/**\n'
 
 // Concatenate & Minify JS
 gulp.task('scripts', function() {
-    return gulp.src('src/data-view.js')
+    return gulp.src('src/js/*.js')
         .pipe(replace('#date#', res))
+		.pipe(concat('all.js'))
         .pipe(gulp.dest('dist'))
         .pipe(rename('data-view'+version+'.js'))
         .pipe(gulp.dest('dist'))
