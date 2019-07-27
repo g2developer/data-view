@@ -1783,7 +1783,7 @@ DataViewItem.prototype.show = function(){
  */
 DataViewItem.prototype.hide = function(){
 	for(var i = 0; i < this.elements.length; i++){
-		this._preStyleDisplay = this.elements[i].style.display
+		this._preStyleDisplay = this.elements[i].style.display;
 		this.elements[i].style.display = "none";
 	}
 };
