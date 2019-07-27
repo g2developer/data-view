@@ -46,6 +46,8 @@ function DataView(params){
 	this.createGlobalItems = true;
 	// change한 데이터를 dataview data로 참조할 것인지
 	this.referenceData = false;
+	// custom tag urls
+	this.customTagUrls = [];
 
 	this.config(params);
 }
@@ -99,11 +101,27 @@ DataView.prototype.initDataView = function(element){
 			this.change(newArr[i].id, []);	//clear
 		}
 	}
+
 	this._initializing = false;
 	this.initialized = true;
 
 };
 
+
+/**
+ * url로 html을 가져와 custom tag에 입히고, dataview를 등록한다.
+ * @param arr ex) [ {tagName:"customTagName", url:"html url", data: init data object} ]
+ */
+DataView.prototype.initCustomTags = function(arr){
+	this.customTagUrls = arr;
+	if(this.customTagUrls.length > 0){
+		var item = null;
+		for(var i = 0; i < this.customTagUrls.length; i++){
+			item = this.customTagUrls[i];
+			this.addDataViewByUrl(item.url, item.tagName, item.data);
+		}
+	}
+};
 
 /**
  * data-view 혹은 data-list를 찾는다.
@@ -114,7 +132,7 @@ DataView.prototype.findDataViewList = function(html){
 	if(!html){
 		html = document;
 	}
-	var targetList = jQuery("["+ATTR_DATA_VIEW+"], ["+ATTR_DATA_LIST+"]", html);
+	var targetList = el("["+ATTR_DATA_VIEW+"], ["+ATTR_DATA_LIST+"]", html);
 	return targetList;
 };
 
@@ -133,7 +151,7 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 
 	for(var i = 0; i < targetList.length; i++){
 		dvId = this.getDataViewId(targetList[i]);
-		dvType = jQuery(targetList[i]).attr(ATTR_DATA_VIEW) ? ATTR_DATA_VIEW : ATTR_DATA_LIST;
+		dvType = targetList[i].getAttribute(ATTR_DATA_VIEW) ? ATTR_DATA_VIEW : ATTR_DATA_LIST;
 
 		if(!dvId) {
 			console.error("[dataview] Not found data-view attribute value or tag id");
@@ -141,15 +159,15 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 		}
 
 		var selector = null;
-		if(jQuery(targetList[i]).attr(ATTR_DATA_VIEW)){
+		if(targetList[i].getAttribute(ATTR_DATA_VIEW)){
 			selector = "["+ATTR_DATA_VIEW+"="+dvId+"]";
-		}else if(jQuery(targetList[i]).attr(ATTR_DATA_LIST)){
+		}else if(targetList[i].getAttribute(ATTR_DATA_LIST)){
 			selector = "["+ATTR_DATA_LIST+"="+dvId+"]";
-		}else  if(jQuery(targetList[i]).attr("id")){
+		}else if(targetList[i].getAttribute("id")){
 			selector = "#"+dvId;
 		}
 
-		var noDvElement = jQuery("["+ATTR_NO_DATA_VIEW+"="+dvId+"]");
+		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+dvId+"]");
 		var noDvElementHTML = noDvElement[0] ? noDvElement[0].outerHTML : "";
 
 		dvItem = new DataViewItem({
@@ -157,41 +175,57 @@ DataView.prototype.addDataViewList = function(targetList, scope){
 			type : dvType,
 			selector : selector,
 			template : targetList[i].outerHTML,
-			element : targetList[i],
-			parent : jQuery(targetList[i]).parent(),
+			elements : targetList[i],
+			parent : targetList[i].parentNode,
 			noDataView : noDvElement,
 			noDataViewHTML : noDvElementHTML,
-			scope : scope
+			scope : scope,
+			isBind : true
 		});
+
+		dvItem.normalVarKeys = this.getNormalVarKeysOnly(dvItem.template);
+
+		for(var j = 0; j < this.items.length; j++){
+			if(this.items[j].id == dvItem.id){
+				this.items[j] = dvItem;
+			}
+		}
 		newArr.push(dvItem);
 
 		if(!this[dvId]){
 			this[dvId] = dvItem;
 		}
-		
+
 		if(this.createGlobalItems){
-			
+
 			// 같은 이름의 기존 변수가 존재한면..
-			if(window[dvId]){
-				
-				console.warn('DataViewItem name \''+dvId+'\' is already exist');
-				
-				var v = window[dvId];
+			if(window[dvId] && window[dvId].constructor != DataViewItem){
+
+				console.warn("DataViewItem name \'"+dvId+"\' is already defined variable or tag id attribute.");
+
+				/*var v = window[dvId];
 				if(typeof(v) === 'object' && !Array.isArray(v)){
 					for(var k in dvItem){
 						if(!v[k]){
 							v[k] = dvItem[k];
 						}
 					}
-				}
+				}*/
 			} else {
 				eval(dvId + "=dvItem;");
 			}
-			
+
+			this[dvId] = dvItem;
 		}
 	}
 	if(newArr.length > 0){
-		this.items = this.items.concat(newArr);
+		// 추가 중복 방지
+		for(var i = 0; i < newArr.length; i++){
+			if(this.items.indexOf(newArr[i]) == -1){
+				this.items.push(newArr[i]);
+			}
+		}
+		// this.items = this.items.concat(newArr);
 	}
 	return newArr;
 };
@@ -203,9 +237,9 @@ DataView.prototype.addDataViewList = function(targetList, scope){
  * @return string - dataview 실별 id
  */
 DataView.prototype.getDataViewId = function(el){
-	return (jQuery(el).attr(ATTR_DATA_VIEW) ||
-			jQuery(el).attr(ATTR_DATA_LIST) ||
-			jQuery(el).attr("id"));
+	return (el.getAttribute(ATTR_DATA_VIEW) ||
+			el.getAttribute(ATTR_DATA_LIST) ||
+			el.getAttribute("id"));
 };
 
 
@@ -223,6 +257,14 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 	for(var i = 0; i < this.items.length; i++){
 		if(this.items[i].id == dataViewId){
 			item = this.items[i];
+			item.elements = this.getDataViewElements(item);
+			item.parent = item.elements[0].parentNode;
+
+		var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
+		var noDvElementHTML = noDvElement[0] ? noDvElement[0].outerHTML : "";
+			item.noDataView = noDvElement;
+			item.noDataViewHTML = noDvElementHTML;
+
 			break;
 		}
 	}
@@ -236,7 +278,7 @@ DataView.prototype.getDataViewItem = function(dataViewId){
 
 /**
  * dataViewId로 저장되있는 dataview item을 리턴
- * @param dataViewId - dataview id 
+ * @param dataViewId - dataview id
  * @return object - dataview object item
  */
 DataView.prototype.get = function(dataViewId){
@@ -255,19 +297,19 @@ DataView.prototype.getDataViewSelector = function(dataViewId){
 
 
 /**
- * dataview의 화면 내 실제 element를 리턴한다.
+ * dataview의 화면 내 실제 elements를 리턴한다.
  * @param item - dataview item
- * @return jquery element - 화면에 적용되어있는 실제 dataview element
+ * @return NodeList - 화면에 적용되어있는 실제 dataview element
  */
-DataView.prototype.getDataViewElement = function(item){
-	var el = jQuery(item.selector, item.parent);
-	if(!el || el.length == 0) {
-		el = jQuery(item.selector);
-		if(el || el.length > 0) {
-			item.parent = el.parent();
+DataView.prototype.getDataViewElements = function(item){
+	var e = el(item.selector, item.parent);
+	if(!e || e.length == 0) {
+		e = el(item.selector);
+		if(e || e.length > 0) {
+			item.parent = e.parentNode;
 		}
 	}
-	return el;
+	return e;
 };
 
 
@@ -335,7 +377,7 @@ DataView.prototype.mergeData = function (tmp, data){
 	var o = tmp;
 
 	// escape문자 변경
-    tmp = escapeToNormalChar(tmp);
+	tmp = escapeToNormalChar(tmp);
 	// 전역변수 변경
 	tmp = this.mergeGlobal(tmp);
 	// 일반변수 변경
@@ -344,12 +386,12 @@ DataView.prototype.mergeData = function (tmp, data){
 	try{
 		tmp = eval(tmp);
 	}catch(e){
-//		o = escapeToNormalChar(o);
-//		console.error("syntax error " + o + " \n-> " + tmp);
-		tmp = '';
+		// o = escapeToNormalChar(o);
+		// console.error("syntax error " + o + " \n-> " + tmp);
+		tmp = "";
 	}
-	if(tmp == null || tmp == undefined || tmp == 'null' || tmp == 'undefined'){
-		tmp = '';
+	if(tmp == null || tmp == undefined || tmp == "null" || tmp == "undefined"){
+		tmp = "";
 	}
 	return tmp;
 };
@@ -367,36 +409,70 @@ DataView.prototype.getSyntaxList = function(html){
 
 
 /**
+ * template html에서 normal var로 등록된 key들을 리턴한다.
+ * @param html dataview template html
+ */
+DataView.prototype.getNormalVarKey = function(html){
+	// 리터럴,숫자 제거
+	var tmp = html;
+	// 문자열 제거
+	tmp = tmp.replace(/\'[^\']*\'/g, "");
+	tmp = tmp.replace(/\"[^\"]*\"/g, "");
+	// 숫자, 소수제거
+	tmp = tmp.replace(/^\w\d*\.?\d*/g, "");
+	tmp = tmp.replace(/^-\w\d*\.?\d*/g, "");
+	// 함수형식 제거
+	tmp = tmp.replace(/\w+(\.\w+)* *\(/g, "");
+	// 예약어 제거
+	tmp = tmp.replace(/null/g, "");
+	tmp = tmp.replace(/true/g, "");
+	tmp = tmp.replace(/false/g, "");
+	tmp = tmp.replace(/undefined/g, "");
+
+	// object 검색 형식
+	// \w+(\.*\w*)* -> item.obj.key
+	var rg = /[a-zA-Z_$]+\w*([\[0-9]+\])*(\.[a-zA-Z_$]+\w*([\[0-9]+\])*)*/g;
+
+	var match = tmp.match(rg);
+	return match;
+};
+
+
+/**
+ * template html에서 오직 일반 변수의 key만을 중복없이 리턴한다.
+ * 글로벌 var 제외
+ * @param html dataview template html
+ */
+DataView.prototype.getNormalVarKeysOnly = function(html){
+	var tmp = (this.getSyntaxList(html) || []).join();
+	tmp = tmp.replace(/@[A-z]\w*(\.\w+)*/g, "");
+	var match = this.getNormalVarKey(tmp);
+	if(!match || match.length == 0){
+		return [];
+	}
+	var noOverlap = [];
+	for(var i = 0; i < match.length; i++){
+		if(noOverlap.indexOf(match[i]) == -1){
+			noOverlap.push(match[i]);
+		}
+	}
+	return noOverlap;
+};
+
+
+/**
  * 일반 변수를 html에 적용 {{변수}} 형식
  * @param html - dataview template html
  * @param data - 적용할 data
  * @return string - data가 적용된 html
  */
 DataView.prototype.mergeNormalVar = function(html,data){
-	// 리터럴,숫자 제거
-	var tmp = html;
-	// 문자열 제거
-	tmp = tmp.replace(/\'[^\']*\'/g, '');
-	tmp = tmp.replace(/\"[^\"]*\"/g, '');
-	// 숫자, 소수제거
-	tmp = tmp.replace(/^\w\d+\.?\d*/g, '');
-	// 함수형식 제거
-	tmp = tmp.replace(/\w+(\.\w+)* *\(/g, '');
-	// 예약어 제거
-	tmp = tmp.replace(/null/g, '');
-	tmp = tmp.replace(/true/g, '');
-	tmp = tmp.replace(/false/g, '');
-	tmp = tmp.replace(/undefined/g, '');
 
-	// object 검색 형식
-	// \w+(\.*\w*)* -> item.obj.key
-	var rg = /\w+(\.\w+)*/g;
-
-	var match = tmp.match(rg);
+	var match = this.getNormalVarKey(html);
 	if(match == null) return html;
 	for(var i = 0; i < match.length; i++){
 		var value = this.getDataOfKey(data,match[i]);
-		if(isNaN(value) && typeof value == 'string'){
+		if(isNaN(value) && typeof value == "string"){
 			value = "'"+value+"'";
 		}
 		html = html.replace(match[i], value);
@@ -414,13 +490,13 @@ DataView.prototype.mergeNormalVar = function(html,data){
  */
 DataView.prototype.mergeGlobal = function(html){
 	// {{@변수이름 }} 형식 (리터럴x)
-	var rg = /@\w+(\.\w+)*/g;
+	var rg = /@[A-z]\w*(\.\w+)*/g;
 	var match = html.match(rg);
 	if(match == null) return html;
 	for(var i = 0; i < match.length; i++){
 		var gVar = match[i];
 		var value = eval(gVar.substr(1));
-		if(value && typeof value == 'string' && value != 'null' && value != 'undefined'){
+		if(value && typeof value == "string" && value != "null" && value != "undefined"){
 			value = "'"+value+"'";
 		}
 		html = html.replace(new RegExp(gVar,"g"), value);
@@ -445,12 +521,12 @@ DataView.prototype.mergeIfStateHtmlData = function(html, data){
 		var logicRg = /\{\s*\([^\(\)]*\)\s*\{|\}\s*\([^\(\)]*\)\s*\{/g;
 		var logicMatch = tmp.match(logicRg);
 
-		var result = '';
+		var result = "";
 
 		// if문 중에서 true 인것을 골라 소스를 찾는다.
 		for(var i = 0; i < logicMatch.length; i++){
 
-			var logic = logicMatch[i].replace(/\{|\}/g, '');
+			var logic = logicMatch[i].replace(/\{|\}/g, "");
 			var t = this.mergeData(logic, data);
 			if(t){
 				result = srcArr[i];
@@ -480,19 +556,19 @@ DataView.prototype.mergeIfStateHtmlData = function(html, data){
  */
 DataView.prototype.getDataOfKey = function(data, key){
 	var result = this.getLiteral(key);
-
 	if(result == null || result == undefined){
-		key = key.replace(/ /g, '');
+		key = key.replace(/ /g, "");
 		// key가 객체인 경우 (xxx.yyy.key 형식)
-		if(key.split('.').length >= 2){
-			var kArr = key.split('.');
+		var kArr = key.match(/[\w$]+/g);
+		if(kArr && kArr.length >= 2){
 			var tmp = data;
 			try{
 				for(var j = 0; j < kArr.length; j++){
 					tmp = tmp[kArr[j]];
 				}
 			}catch(e){
-				tmp = '';
+				// console.error(e);
+				tmp = "";
 			}
 			result = tmp;
 		}else{
@@ -512,7 +588,7 @@ DataView.prototype.getLiteral = function(key){
 	if(!key) return key;
 	var litTest1 = / *\'.*\' */;
 	var litTest2 = / *\".*\" */;
-	var result = '';
+	var result = "";
 
 	if(litTest1.test(key) ){
 		result = key.substring(key.indexOf("'")+1, key.lastIndexOf("'"));
@@ -539,9 +615,9 @@ DataView.prototype.getNotLiteralArr = function(txt){
 	var arr = tmp.match(/\w+(\.\w+)*/g) || [];
 
 	for(var i = arr.length; i >= 0; i--){
-		if(!isNaN(arr[i]) || arr[i] == 'true' || arr[i] == 'false'){	//숫자면 제외
+		if(!isNaN(arr[i]) || arr[i] == "true" || arr[i] == "false"){	//숫자면 제외
 			arr.splice(i,1);
-		}else if(['amp','lt','gt','typeof','instanceof'].indexOf(arr[i]) != -1){
+		}else if(["amp","lt","gt","typeof","instanceof"].indexOf(arr[i]) != -1){
 			// 예약어 제거
 			arr.splice(i,1);
 		}
@@ -556,23 +632,28 @@ DataView.prototype.getNotLiteralArr = function(txt){
  * @param item - dataview item
  */
 DataView.prototype.showNoDataView = function(item){
-	var noDvElement = jQuery("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
+	var noDvElement = el("["+ATTR_NO_DATA_VIEW+"="+item.id+"]");
+
+	if(!noDvElement || noDvElement.length == 0)
+		return;
+
+	noDvElement = noDvElement[0];
 
 	// 데이터 없는 경우 no-data-view 출력
 	if(!item.data || item.data.length == 0){
 
-		if(noDvElement.html()){
-			noDvElement.show();
+		if(noDvElement.outerHTML){
+			noDvElement.style.display = "block";
 		}else{
 			if(item.noDataViewHTML){
 				if(item.parent && item.parent.length > 0){
-					jQuery(item.noDataViewHTML).appendTo(item.parent);
+					item.parent.appendChilde(this._createElements(item.noDataViewHTML));
 				}
 			}
 		}
 
 	} else {
-		if(noDvElement) noDvElement.hide();
+		if(noDvElement) noDvElement.style.display = "none";
 	}
 };
 
@@ -585,52 +666,99 @@ DataView.prototype.showNoDataView = function(item){
 DataView.prototype.change = function(dataViewId, data){
 	//if(!data) return;
 	var item = this.getDataViewItem(dataViewId);
-	var el = this.getDataViewElement(item);
-	var html = "";
+	var ele = item.elements;
+	this._changing = item._changing = true;
 
-	if(!this.referenceData){
-		data = clone(data);
-	}
-
-	if(item.type == ATTR_DATA_LIST){
-		if(data){
-			item.data = Array.isArray(data) ? data : [data];
-		}else{
-			if(this.referenceData){
-				for(var i = item.data.length - 1; i >= 0; i--){
-					item.data.pop();
-				}
-			}else{
-				item.data = data;
-			}
+	// if(!item.isBind){
+		if(!this.referenceData){
+			data = clone(data);
 		}
+		if(item.type == ATTR_DATA_LIST){
+			if(data){
+				item.data = Array.isArray(data) ? data : [data];
+			}else{
+				if(this.referenceData){
+					for(var i = item.data.length - 1; i >= 0; i--){
+						item.data.pop();
+					}
+				}else{
+					item.data = data;
+				}
+			}
+
+		} else {
+			item.data = data;
+		}
+	// }
+
+	var html = "";
+	if(item.type == ATTR_DATA_LIST){
 		html = this.getDataViewListHtml(dataViewId, data);
 	}else{
-		item.data = data;
 		html = this.getDataViewHtml(dataViewId, data);
 	}
 
-	this._changing = true;
-
 	// element가 둘 이상인 경우 html을 변경할 마지막 하나만 남기고 모두 지움
-	if(el.length > 1){
-		for(var i = el.length-1; i > 0; i--){
-			el.eq(i).remove();
+	if(ele.length > 1){
+		for(var i = ele.length-1; i > 0; i--){
+			ele[i].outerHTML = "";
 		}
 	}
 
 	// !! parent로 찾으면 parent를 변경되는 ui 프레임워크에 의해 못찾을 수 있음
 	if(html && html != ""){
-		el.replaceWith(html);
+		ele[0].outerHTML = html;
 	}else{
-		el.hide();
-		el.html("");
+		item.hide();
+		ele[0].innerHTML = "";
 	}
 
-	item.element = this.getDataViewElement(item);
+
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
-	this._changing = false;
+	this._changing = item._changing = false;
 };
+
+
+/**
+ * data로 data-view로 지정된 엘리먼트를 변경한다.
+ * @param dataViewId - dataview 식별자
+ * @param data - object or array
+ */
+DataView.prototype.refresh = function(dataViewId, refreshData){
+	//if(!data) return;
+	var item = this.getDataViewItem(dataViewId);
+	var ele = item.elements;
+	this._changing = item._changing = true;
+
+	var html = "";
+	if(item.type == ATTR_DATA_LIST){
+		html = this.getDataViewListHtml(dataViewId, item.data);
+	}else{
+		html = this.getDataViewHtml(dataViewId, item.data);
+	}
+
+	// element가 둘 이상인 경우 html을 변경할 마지막 하나만 남기고 모두 지움
+	if(ele.length > 1){
+		for(var i = ele.length-1; i > 0; i--){
+			ele[i].outerHTML = "";
+		}
+	}
+
+	// !! parent로 찾으면 parent를 변경되는 ui 프레임워크에 의해 못찾을 수 있음
+	if(html && html != ""){
+		ele[0].outerHTML = html;
+	}else{
+		item.hide();
+		ele[0].innerHTML = "";
+	}
+
+
+	item.elements = this.getDataViewElements(item);
+	this.showNoDataView(item);
+	this._changing = item._changing = false;
+};
+
 
 /**
  * data로 data-view로 지정된 엘리먼트를 dataview 하단에 추가한다.
@@ -639,27 +767,31 @@ DataView.prototype.change = function(dataViewId, data){
  */
 DataView.prototype.append = function(dataViewId, data){
 	if(!data) return;
-	var item = this.getDataViewItem(dataViewId);
-	var el = this.getDataViewElement(item);
 
-	if(!item.data){
-		item.data = this.referenceData ? data : clone(data);
-	}else{
-		if(Array.isArray(item.data)){
-			if(Array.isArray(data)){
-				for(var i = 0; i < data.length; i++){
-					item.data.push(data[i]);
+	var item = this.getDataViewItem(dataViewId);
+	var ele = item.elements;
+	this._changing = item._changing = true;
+
+	if(!item.isBind){
+		if(!item.data){
+			item.data = this.referenceData ? data : clone(data);
+		}else{
+			if(Array.isArray(item.data)){
+				if(Array.isArray(data)){
+					for(var i = 0; i < data.length; i++){
+						item.data.push(data[i]);
+					}
+				}else{
+					item.data.push(data);
 				}
 			}else{
-				item.data.push(data);
-			}
-		}else{
-			if(Array.isArray(data)){
-				var c = clone(data);
-				c.unshift(item.data);
-				item.data = c;
-			}else{
-				item.data = [item.data, data];
+				if(Array.isArray(data)){
+					var c = clone(data);
+					c.unshift(item.data);
+					item.data = c;
+				}else{
+					item.data = [item.data, data];
+				}
 			}
 		}
 	}
@@ -669,21 +801,22 @@ DataView.prototype.append = function(dataViewId, data){
 		//array
 		html = this.getDataViewListHtml(dataViewId, data);
 	}else{
-		html = this.getDataViewHtml(dataViewId, data);
+		html = this.getDataViewHtml(dataViewId, data || {});
 	}
 
-	this._changing = true;
-	el.last().after(html);
+	var node = ele[ele.length-1];
+	var newNodes = this._createElements(html);
+	node.parentNode.insertBefore(newNodes, node.nextSibling);
 
 	// 첫번째가 템플릿이면 삭제
-	var tmplt = el.first();
-	if(!tmplt.is(':visible')){
-		tmplt.remove();
+	var tmplt = ele[0];
+	if(tmplt.style.display == "none"){
+		tmplt.outerHTML = "";
 	}
 
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
-	this._changing = false;
+	this._changing = item._changing = false;
 };
 
 
@@ -695,28 +828,30 @@ DataView.prototype.append = function(dataViewId, data){
 DataView.prototype.prepend = function(dataViewId, data){
 	if(!data) return;
 	var item = this.getDataViewItem(dataViewId);
-	var el = this.getDataViewElement(item);
+	var ele = item.elements;
+	this._changing = item._changing = true;
 
-	if(!item.data){
-		item.data = this.referenceData ? data : clone(data);
-	}else{
-		if(Array.isArray(item.data)){
-			if(Array.isArray(data)){
-				for(var i = 0; i < data.length; i++){
-					item.data.unshift(data[i]);
+	if(!item.isBind){
+		if(!item.data){
+			item.data = this.referenceData ? data : clone(data);
+		}else{
+			if(Array.isArray(item.data)){
+				if(Array.isArray(data)){
+					for(var i = 0; i < data.length; i++){
+						item.data.unshift(data[i]);
+					}
+				}else{
+					item.data.unshift(data);
 				}
 			}else{
-				item.data.unshift(data);
+				if(Array.isArray(data)){
+					var c = clone(data);
+					c.push(item.data);
+					item.data = c;
+				}else{
+					item.data = [data, item.data];
+				}
 			}
-		}else{
-			if(Array.isArray(data)){
-				var c = clone(data);
-				c.push(item.data);
-				item.data = c;
-			}else{
-				item.data = [data, item.data];
-			}
-
 		}
 	}
 
@@ -725,21 +860,22 @@ DataView.prototype.prepend = function(dataViewId, data){
 		//array
 		html = this.getDataViewListHtml(dataViewId, data);
 	}else{
-		html = this.getDataViewHtml(dataViewId, data);
+		html = this.getDataViewHtml(dataViewId, data || {});
 	}
 
-	this._changing = true;
-	el.first().before(html);
+	var node = ele[0];
+	var newNode = this._createElements(html);
+	node.parentNode.insertBefore(newNode, node);
 
 	// 마지막이 템플릿이면 삭제
-	var tmplt = el.last();
-	if(!tmplt.is(':visible')){
-		tmplt.remove();
+	var tmplt = ele[ele.length-1];
+	if(tmplt.style.display == "none"){
+		tmplt.outerHTML = "";
 	}
 
-	item.element = this.getDataViewElement(item);
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
-	this._changing = false;
+	this._changing = item._changing = false;
 };
 
 
@@ -751,17 +887,26 @@ DataView.prototype.prepend = function(dataViewId, data){
  */
 DataView.prototype.update = function(dataViewId, idx, data){
 	var item = this.getDataViewItem(dataViewId);
-	if(!item.data || item.data.length < idx) return;
-	var el = this.getDataViewElement(item).eq(idx);
-	if(!el.is(':visible')) return;
 
-	item.data[idx] = data;
-	var html = this.getDataViewHtml(dataViewId, data);
+	this._changing = item._changing = true;
+	if(!item.data || item.data.length < idx) {
+		this._changing = item._changing = false;
+		return;
+	}
+	var ele = this.getDataViewElements(item)[idx];
+	if(ele.style.display == "none") {
+		this._changing = item._changing = false;
+		return;
+	}
 
-	this._changing = true;
-	el.replaceWith(html);
-	item.element = this.getDataViewElement(item);
-	this._changing = false;
+	if(!item.isBind){
+		item.data[idx] = data;
+	}
+	var html = this.getDataViewHtml(dataViewId, data || {});
+
+	ele.outerHTML = html;
+	item.elements = this.getDataViewElements(item);
+	this._changing = item._changing = false;
 };
 
 
@@ -772,23 +917,32 @@ DataView.prototype.update = function(dataViewId, idx, data){
  */
 DataView.prototype.remove = function(dataViewId, idx){
 	var item = this.getDataViewItem(dataViewId);
-	if(!item.data || item.data.length < idx) return;
+	this._changing = item._changing = true;
 
-	var el = this.getDataViewElement(item).eq(idx);
-	if(!el.is(':visible')) return;
-
-	item.data.splice(idx,1);
-
-	this._changing = true;
-	if(this.getDataViewElement(item).length > 1){
-		el.remove();
-	}else{
-		el.hide();
-		el.html("");
+	if(!item.data || item.data.length < idx) {
+		this._changing = item._changing = false;
+		return;
 	}
-	item.element = this.getDataViewElement(item);
+
+	var ele = item.elements[idx];
+	if(!ele || ele.style.display == "none") {
+		this._changing = item._changing = false;
+		return;
+	}
+
+	if(!item.isBind){
+		item.data.splice(idx,1);
+	}
+
+	if(this.getDataViewElements(item).length > 1){
+		ele.outerHTML = "";
+	}else{
+		ele.style.display = "none";
+		ele.innerHTML = "";
+	}
+	item.elements = this.getDataViewElements(item);
 	this.showNoDataView(item);
-	this._changing = false;
+	this._changing = item._changing = false;
 };
 
 
@@ -797,6 +951,7 @@ DataView.prototype.remove = function(dataViewId, idx){
  * @param dataViewId - dataview id
  */
 DataView.prototype.blank = function(dataViewId){
+	this._changing = true;
 	var item = this.getDataViewItem(dataViewId);
 	var blnkData = {};
 	if(item.type == ATTR_DATA_LIST || Array.isArray(item.data)){
@@ -808,6 +963,7 @@ DataView.prototype.blank = function(dataViewId){
 		}
 	}
 	this.change(dataViewId, blnkData);
+	this._changing = false;
 };
 
 
@@ -819,67 +975,32 @@ DataView.prototype.clear = function(dataViewId){
 	this.change(dataViewId, null);
 };
 
-
 /**
- * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 변경 혹은 삽입
- * @param url - 로드할 html의 url
- * @param querySelector - 로드한 html을 추가할 query selector
- * @param isOverride - bool 오버라이드 할 것인지
+ * url로 element를 가져와서 해당 tag를 변경한 후 dataview에 등록한다.
+ * @param url element를 불러올 url
+ * @param tagNam
+ * @param initData
  */
-DataView.prototype.loadAnd = function(url, querySelector, isOverride){
-	jQuery.get(url, function(html){
-		html = dataview.newDataViewHtml(html);
-		if(querySelector){
-			this._changing = true;
-			var el = jQuery(querySelector);
-			if(isOverride){
-				var p = el.parent();
-				var idx = el.index();
-				el.replaceWith(html);
-				el = p.children().eq(idx);
-			}else{
-				el.html(html);
-			}
-			var targetList = this.findDataViewList(el);
-			dataview.refindParent(targetList);
-			this._changing = false;
+DataView.prototype.addDataViewByUrl = function(url, tagName, initData){
+	http.get(url, function(res){
+		this._changing = true;
+		var elist = el(tagName);
+		for(var i = 0; i < elist.length; i++){
+			elist[i].innerHTML = res;
 		}
+
+		var newArr = dataview.addDataViewList(elist);
+
+		for(var i = 0; i < newArr.length; i++){
+			if(newArr[i].type == ATTR_DATA_VIEW){
+				dataview.change(newArr[i].id, initData || {});	//blank
+			}else{
+				dataview.change(newArr[i].id, initData || []);	//clear
+			}
+		}
+
+		this._changing = false;
 	});
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 변경
- * @param url - 로드할 html의 url
- * @param querySelector - 로드한 html을 추가할 query selector
- */
-DataView.prototype.loadAndOverrideHtml = function(url, querySelector){
-	this.loadAnd(url, querySelector, true);
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 querySelector에 대한 tag를 load한 html 삽입
- * @param url - 로드할 html의 url
- * @param querySelector - 로드한 html을 추가할 query selector
- */
-DataView.prototype.loadAndChangeHtml = function(url, querySelector){
-	this.loadAnd(url, querySelector, false);
-};
-
-
-/**
- * 새로운 html 파일을 로드한 후 dataview item에 추가한다.
- * @param url - 로드된 html string
- * @return string - load한 html에 dataview를 적용한 html
- */
-DataView.prototype.newDataViewHtml = function(html){
-	var targetList = this.findDataViewList(html);
-
-	if(!targetList || targetList.length == 0 ) return html;
-
-	this.addDataViewList(targetList);
-	return this.mergeHtmlData(html, {});
 };
 
 
@@ -897,7 +1018,7 @@ DataView.prototype.refindParent = function(targetList){
 		for(var j = 0; j < this.items.length; j++){
 			// 존재하면 부모를 바꿈
 			if(this.items[j].id == dvId){
-				this.items[j].parent = jQuery(targetList[i]).parent();
+				this.items[j].parent = el(targetList[i]).parentNode;
 			}
 		}
 	}
@@ -926,7 +1047,7 @@ DataView.prototype.objToForm = function(dataViewId, obj){
 		}else if(inpt.type == "checkbox"){
 
 			var valArr = Array.isArray(obj[k]) ? obj[k] : null;
-			if(!valArr && typeof obj[k] == 'string'){
+			if(!valArr && typeof obj[k] == "string"){
 				valArr = obj[k].split(",");
 			}
 
@@ -942,7 +1063,7 @@ DataView.prototype.objToForm = function(dataViewId, obj){
 		}else if(inpt.type == "select-multiple"){
 
 			var valArr = Array.isArray(obj[k]) ? obj[k] : null;
-			if(!valArr && typeof obj[k] == 'string'){
+			if(!valArr && typeof obj[k] == "string"){
 				valArr = obj[k].split(",");
 			}
 			for(var i = 0; i < inpt.options.length; i++){
@@ -1033,11 +1154,11 @@ DataView.prototype.clearForm = function(dataViewId){
 		if(list[i].type == "radio" || list[i].type == "checkbox"){
 			list[i].checked = false;
 		}else if(list[i].type == "color"){
-			list[i].value = '#000000';
+			list[i].value = "#000000";
 		}else if(list[i].type == "select-one"){
 			list[i].selectedIndex = 0;
 		}else{
-			list[i].value = '';
+			list[i].value = "";
 		}
 	}
 };
@@ -1063,6 +1184,449 @@ DataView.prototype.form = function(dataViewId, data){
 
 
 /**
+ * singleton DOMParser를 리턴
+ * @return 브라우저에서 생성된 DOMParser
+ */
+DataView.prototype._getDOMParser = function(){
+	if(!this._domParser){
+		this._domParser = new DOMParser();
+	}
+	return this._domParser;
+};
+
+
+/**
+ * String 타입의 html을 Node로 변경하여 리턴
+ * @param markup html markup
+ * @return NodeList
+ */
+DataView.prototype._createElements = function(markup){
+	/*console.log(markup);
+	var newNodes = this._getDOMParser().parseFromString(markup, "text/html").body.childNodes;
+	console.log(newNodes, newNodes.length);
+	return newNodes;*/
+	return document.createRange().createContextualFragment(markup);
+};
+
+
+/**
+ * bind model의 특성을 주입
+ * @param obj 주입할 target object
+ * @listener model change listener
+ */
+DataView.prototype.addOnBindModel = function(obj, bindArr, listener){
+	obj.bindArr = bindArr;
+	obj.modelChangeListeners = [];
+
+	if(listener && obj.modelChangeListeners.indexOf(listener) == -1){
+		obj.modelChangeListeners.push(listener);
+	}
+
+	obj.dispatch = function(event){
+		for(var i = 0; i < this.modelChangeListeners.length; i++){
+			this.modelChangeListeners[i].refresh(event);
+		}
+	};
+};
+
+
+/**
+ * model change 가 일어나면 실행될 함수 등록
+ * @param obj 주입할 target object
+ * @bindChangeCallback model change callback
+ */
+DataView.prototype.addOnBindChangeListener = function(obj, bindChangeCallback){
+	obj.refresh = bindChangeCallback;
+};
+
+
+/**
+ * 같은 조건으로 바인딩 되었는지
+ * @param obj 주입할 target object
+ * @listener model change listener
+ */
+DataView.prototype.isBindEqual = function(obj, bindArr, listener){
+	var every = obj.bindArr && obj.bindArr.every(function(cur){
+		return bindArr.indexOf(cur) != -1;
+	});
+	if(every &&
+		obj.modelChangeListeners &&
+		obj.modelChangeListeners.indexOf(listener) != -1 ){
+		return true;
+	}
+	return false;
+};
+
+
+/**
+ * binding key 배열로 object를 바인딩할 수 있게 변경한다.
+ * @param obj 변경할 object
+ * @param bindArr binding keys
+ * @param listener model change listener
+ */
+DataView.prototype.bind = function(obj, bindArr, listener){
+	if(!obj || this.isBindEqual(obj, bindArr, listener)) return;
+
+	if(!Array.isArray(obj)){
+		this.addOnBindModel(obj, bindArr, listener);
+		this.addOnBindChangeListener(obj, function(event){
+			var newEvent = {
+				type : "object",
+				key : (this.__k__ ?  this.__k__ + "." : "") + event.key,
+				model: this,
+				child: event
+			};
+			this.dispatch(newEvent);
+		});
+	}else {
+		return;
+	}
+
+	/**
+	 * 등록된 bindkey중 key 하위의 key들을 찾아 리턴한다.
+	 * @param key string search key
+	 * @return sub keys Array
+	 */
+	obj.findSubBindkeyArr = function(key){
+		var arr = this.bindArr.filter(function(str){
+			return str != key && str.startsWith(key);
+		});
+
+		for(var i = 0; i < arr.length; i++){
+			arr[i] = arr[i].replace(key, "");
+			if(arr[i].indexOf(".") == 0){
+				arr[i] = arr[i].replace(".", "");
+			}
+		}
+		return arr;
+	};
+
+	var k = null;
+	for(var i = 0; i < bindArr.length; i++){
+		k = bindArr[i];
+
+		// var kArr = k.split(".");
+		var kArr = k.match(/\w+/g);
+		var tmp = obj;
+
+		for(var j = 0; j < kArr.length; j++){
+			if(!tmp){
+				break;
+			}
+
+			var subKey = kArr[j];
+			var child = tmp[subKey];
+
+			if(child && typeof(child) == "object"){
+				child.__p__ = tmp;	// object parent
+				child.__k__ = subKey;
+				child.__c__ = obj.findSubBindkeyArr(subKey);
+
+				if(Array.isArray(child)){
+					tmp[subKey] = this.bindList(child, child.__c__, child.__p__);
+				} else {
+					this.bind(child, child.__c__, child.__p__);
+				}
+			}
+
+			if(!Array.isArray(tmp)){
+				this.createSetAndGet(tmp, subKey);
+			}
+
+			tmp = tmp[subKey];
+		}
+	}
+
+};
+
+
+/**
+* 하나의 프로퍼티에 대한 setter and getter를 등록합니다.
+* @param obj create target
+* @param prop setter and getter key
+*/
+DataView.prototype.createSetAndGet = function(obj, prop){
+
+	if(!obj ||
+		(Object.getOwnPropertyDescriptor(obj, prop) &&
+		Object.getOwnPropertyDescriptor(obj, prop).set) ) {
+		return;
+	}
+
+	obj["_"+prop] = obj[prop];
+
+	Object.defineProperty(obj, prop, {
+		set : function(d){
+
+			obj["_"+prop] = d;
+
+			var bindChildArr = obj.findSubBindkeyArr(prop);
+
+			if(typeof(obj["_"+prop]) == "object" && bindChildArr && bindChildArr.length > 0){
+				if(Array.isArray(obj["_"+prop])){
+					obj["_"+prop] = dataview.bindList(obj["_"+prop], bindChildArr, obj);
+				}else {
+					dataview.bind(obj["_"+prop], bindChildArr, obj);
+				}
+			}
+
+			this.dispatch({
+				type: "object",
+				key: (this.__k__ ? this.__k__ + "." + prop : prop),
+				data: d,
+				model: obj
+			});
+		},
+		get : function(){
+			return obj["_"+prop];
+		}
+	});
+
+	// obj.getRoot = function(){
+	// 	if(!this.__p__){
+	// 		return this;
+	// 	} else {
+	// 		return this.__p__.getRoot();
+	// 	}
+	// };
+
+	// /**
+	//  * 현재 object부터 상위로 key를 찾아 xxx.xxx.xxx같은 형식으로 리턴한다.
+	//  * @param obj key를 찾을 obj
+	//  * @return binding key string
+	//  */
+	// obj.getBindKey = function(obj, key){
+	// 	var k = obj.__k__ || "";
+	// 	k = k && key ? k + "." + key : key;
+	// 	while(obj.__p__){
+	// 		obj = obj.__p__;
+	// 		if(obj.__k__){
+	// 			k = obj.__k__ + "." + k;
+	// 		}
+	// 	}
+	// 	return k;
+	// };
+
+};
+
+
+DataView.prototype.bindList = function(arr, bindArr, listener){
+	if(!arr || this.isBindEqual(arr, bindArr, listener)) return arr;
+	if(arr.__isProxy__ && Array.isArray(arr)){
+		arr = arr.__target__;
+	}
+
+	this.addOnBindModel(arr, bindArr, listener);
+	this.addOnBindChangeListener(arr, function(event){
+		var index = this.indexOf(event.model);
+		var newEvent = {
+			type: "update",
+			data: this[index],
+			index: index,
+			model: this,
+			child: event
+		};
+		newEvent.key = (this.__k__ || "") + "." + index + "." + event.key;
+		// if(event.type == "object"){
+		// 	// newEvent.key = (this.__k__ || "") + "[" + index + "]" + "." + event.key;
+		// 	newEvent.key = (this.__k__ || "") + "[" + index + "]" + "." + event.key;
+		// } else {
+		// 	// newEvent.key = (this.__k__ || "") + "[" + index + "]" + "[" + event.index + "]";
+		// 	newEvent.key = (this.__k__ || "") + "[" + index + "]" + "[" + event.index + "]";
+		// }
+		this.dispatch(newEvent);
+	});
+
+	for(var i = 0; i < arr.length; i++){
+		if(isObj(arr[i])){
+			dataview.bind(arr[i], arr.bindArr, arr);
+		}
+		// arr[i].modelChangeListeners = [arr];
+	}
+
+	// add last
+	arr.push = function(){
+		this.__chaning__ = true;
+		var result = Array.prototype.push.apply(this, arguments);
+		var item = arguments[0];
+		if(isObj(item)){
+			dataview.bind(item, this.bindArr, this);
+			// item.modelChangeListeners = [this];
+		}
+		var index = this.indexOf(item);
+		this.__chaning__ = false;
+		this.dispatch({
+			type: "push",
+			data: item,
+			index: index,
+			model: this
+		});
+		return result;
+	};
+
+
+	// remove last
+	arr.pop = function(){
+		// if(this.length == 0) return;
+		this.__chaning__ = true;
+		var index = this.length - 1;
+		var item = this[index];
+		if(isObj(item) && item.modelChangeListeners){
+			item.modelChangeListeners = undefined;
+		}
+		var result = Array.prototype.pop.apply(this);
+		this.__chaning__ = false;
+		this.dispatch({
+			type: "pop",
+			data: item,
+			index: index,
+			model: this
+		});
+		return result;
+	};
+
+
+	// remove first
+	arr.shift = function(){
+		// if(this.length == 0) return;
+		this.__chaning__ = true;
+		var index = 0;
+		var item = this[index];
+		if(isObj(item) && item.modelChangeListeners){
+			item.modelChangeListeners = undefined;
+		}
+		var result = Array.prototype.shift.apply(this, arguments);
+		this.__chaning__ = false;
+
+		this.dispatch({
+			type: "shift",
+			data: item,
+			index: index,
+			model: this
+		});
+		return result;
+	};
+
+
+	// add first
+	arr.unshift = function(){
+		this.__chaning__ = true;
+		var result = Array.prototype.unshift.apply(this, arguments);
+		var item = arguments[0];
+		if(isObj(item)){
+			dataview.bind(item, this.bindArr, this);
+			// item.modelChangeListeners = [this];
+		}
+		var index = this.indexOf(item);
+		this.__chaning__ = false;
+		this.dispatch({
+			type: "unshift",
+			data: item,
+			index: index,
+			model: this
+		});
+		return result;
+	};
+
+
+	// remove arguments[0] ~ arguments[1]
+	arr.splice = function(){
+		this.__chaning__ = true;
+		var result = Array.prototype.splice.apply(this, arguments);
+		if(this.length == 0 || result.length == 0) {
+			this.__chaning__ = false;
+			return;
+		}
+		var index = arguments[0];
+		var size = arguments[1];
+		result.forEach(function(item){
+			if(isObj(item) && item.modelChangeListeners){
+				item.modelChangeListeners = undefined;
+			}
+		});
+		this.__chaning__ = false;
+		this.dispatch({
+			type: "splice",
+			data: result,
+			index: index,
+			size: size,
+			model: this
+		});
+		return result;
+	};
+
+
+	// remove at index
+	arr.removeAt = function(index){
+		this.__chaning__ = true;
+		var result = Array.prototype.splice.apply(this, [index,1]);
+		if(this.length == 0 || result.length == 0) {
+			this.__chaning__ = false;
+			return;
+		}
+		result.forEach(function(item){
+			if(isObj(item) && item.modelChangeListeners){
+				item.modelChangeListeners = undefined;
+			}
+		});
+		this.__chaning__ = false;
+		this.dispatch({
+			type: "removeAt",
+			data: result,
+			index: index
+		});
+		return result;
+	};
+
+	var parr = null;
+	if(Proxy){
+		parr = new Proxy(arr, {
+			set : function(target, index, value, receiver){
+
+				// if(isIE){
+					target[index] = value;
+				// } else {
+				// 	Reflect.set(target, index, value, receiver);
+				// }
+
+				if(!isNaN(index)){
+					if(typeof(value) == "object"){
+						dataview.bind(value, target.bindArr, target);
+					}
+					if(!target.__chaning__){
+						target.dispatch({
+							type: "update",
+							data: value,
+							index: index,
+							model: target
+						});
+					}
+				}
+				return true;
+			},
+			get: function(target, index, receiver){
+				if(index == "__isProxy__"){
+					return true;
+				} else if(index == "__target__"){
+					return target;
+				}
+				return target[index];
+			}
+		});
+
+		for(var k in window){
+			if(["webkitStorageInfo"].indexOf(k) == -1 && Array.isArray(window[k]) && window[k] == arr){
+				eval(k + " = parr;");
+				break;
+			}
+		}
+
+	}
+	return parr;
+};
+
+
+/**
  * constructor DataView Item
  * @param params - dataview item parameters
  */
@@ -1084,6 +1648,34 @@ function DataViewItem(params){
 }
 
 
+DataViewItem.prototype = {
+	_data : null,
+	set data(obj){
+		if(this.isBind){
+
+			if(this.type == ATTR_DATA_VIEW){
+
+				dataview.bind(obj, this.normalVarKeys, this);
+				this._data = obj;
+				// if(this._data && this._data.modelChangeListeners.indexOf(this) == -1){
+				// 	this._data.modelChangeListeners.push(this);
+				// }
+
+			} else if(this.type == ATTR_DATA_LIST){
+				var parr = dataview.bindList(obj, this.normalVarKeys, this);
+				this._data = parr;
+			}
+			this.refresh();
+		} else {
+			this._data = obj;
+		}
+	},
+	get data(){
+		return this._data;
+	}
+};
+
+
 /**
  * data로 뷰를 변경한다.
  * @param data - 변경할 데이터
@@ -1093,6 +1685,35 @@ DataViewItem.prototype.change = function(data){
 		data = {};
 	}
 	dataview.change(this.id, data);
+};
+
+
+/**
+ * item에 저장되 있는 data로 뷰를 변경한다.
+ */
+DataViewItem.prototype.refresh = function(refreshData){
+	if(this._changing) return;
+	if(!refreshData || this.type == ATTR_DATA_VIEW){
+		dataview.refresh(this.id, refreshData);
+		return;
+	}
+
+	switch (refreshData.type) {
+		case "update"	: this.update(refreshData.index, refreshData.data); break;
+		case "push"		: this.append(refreshData.data); break;
+		case "unshift"	: this.prepend(refreshData.data); break;
+		case "pop"		:
+		case "shift"	:
+		case "removeAt"	: this.remove(refreshData.index); break;
+		case "splice"	:
+			var last = refreshData.index + refreshData.size - 1;
+			for(var i = last; i >= refreshData.index; i--){
+				this.remove(i);
+			}
+			break;
+		default:
+			dataview.refresh(this.id, refreshData);
+	}
 };
 
 
@@ -1148,6 +1769,24 @@ DataViewItem.prototype.blank = function(){
 	dataview.blank(this.id);
 };
 
+/**
+ * dataview를 화면에 보인다
+ */
+DataViewItem.prototype.show = function(){
+	for(var i = 0; i < this.elements.length; i++){
+		this.elements[i].style.display = this._preStyleDisplay || "block";
+	}
+};
+
+/**
+ * dataview를 화면에서 가린다.
+ */
+DataViewItem.prototype.hide = function(){
+	for(var i = 0; i < this.elements.length; i++){
+		this._preStyleDisplay = this.elements[i].style.display
+		this.elements[i].style.display = "none";
+	}
+};
 
 /**
  * dataview 안에 있는 form element에 데이터를 채운다.
@@ -1197,9 +1836,9 @@ DataViewItem.prototype.form = function(data){
  * @returns
  */
 function escapeToNormalChar(str){
-	return str.replace(/&lt;/g, '<')
-	.replace(/&gt;/g, '>')
-	.replace(/&amp;/g, '&');
+	return str.replace(/&lt;/g, "<")
+	.replace(/&gt;/g, ">")
+	.replace(/&amp;/g, "&");
 }
 
 
@@ -1262,6 +1901,57 @@ function _dvinit(e){
 	}
 }
 
+
+/**
+ * get elements
+ * @return NodeList
+ */
+function el(){
+	if(!arguments || arguments.length === 0 || !arguments[0]){
+		throw new Error("function el() arguments is required");
+	}
+	var args = Array.prototype.slice.call(arguments);
+	var query = args[0];
+
+	if(args.length === 1){
+		if(query.querySelectorAll){
+			return query;
+		}
+		return document.querySelectorAll(query);
+	}
+
+	var scope = args[args.length-1];
+	query = args.slice(0, args.length-1).join(",");
+
+	// 마지막 파라메터가 elemnt인 경우
+	if(scope.querySelectorAll){
+		return scope.querySelectorAll(query);
+	}
+
+	// html인 경우
+	if(scope.indexOf("<") != -1){
+		var parser = new DOMParser();
+		scope = parser.parseFromString(scope, "text/html");
+		return scope.querySelectorAll(query);
+	}
+
+	query = args.join(",");
+	return document.querySelectorAll(query);
+}
+
+/**
+ * is object ?
+ * @param anything
+ * @return boolean
+ */
+function isObj(obj){
+	return typeof(obj) == "object";
+}
+
+
+
+// Internet Explorer 6-11
+var isIE = /*@cc_on!@*/false || !!document.documentMode;
 
 //dataview 생성
 var dataview = new DataView();
