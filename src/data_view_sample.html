@@ -4,12 +4,14 @@
         <meta charset="UTF-8">
         <title>dataview sample</title>
 
-		<script type="text/javascript" src="../dist/data-view.min.js"></script>
-
-		<!-- <script type="text/javascript" src="./js/data-view.service.js"></script>
-		<script type="text/javascript" src="./js/data-view.js"></script> -->
+		<!-- <script type="text/javascript" src="../dist/data-view.min.js"></script> -->
+		<!-- <script type="text/javascript" src="./js/test.js"></script> -->
+		<script type="text/javascript" src="./js/data-view.service.js"></script>
+		<script type="text/javascript" src="./js/data-view.no-eval.js"></script>
 		<script type="text/javascript" >
 
+//		new (function(){
+var dataview = new DataView(this);
 		// $(function(){
 // 			dataview.config({
 // 				attr:"dv",
@@ -19,7 +21,7 @@
 		// });
 
 		// global variables
-		var logined = false;
+		var logined = true;
 		var nick = "닉네임11";
 		var name = null;
 
@@ -55,7 +57,7 @@
 
 		// detail 영역 load
 		function loadDetailView(){
-			// dataview.change("detail", item);
+			dataview.change("detail", item);
 		}
 
 		// form data
@@ -98,6 +100,13 @@
 			if(!v1 || v1 == '') return null;
 			return 'v1:'+v1+ ' ,v2:' + v2 + ', v3:'+v3;
 		}
+
+
+		function addEventListener(){
+
+		}
+
+//		})();
 		</script>
 
     </head>
